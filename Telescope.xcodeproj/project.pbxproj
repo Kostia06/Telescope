@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DDBC103A2EBAE65F00D08CEB /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = DDBC10392EBAE65F00D08CEB /* HotKey */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		DDBC10292EBAE62300D08CEB /* Telescope.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Telescope.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DDBC103A2EBAE65F00D08CEB /* HotKey in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = Telescope;
 			packageProductDependencies = (
+				DDBC10392EBAE65F00D08CEB /* HotKey */,
 			);
 			productName = Telescope;
 			productReference = DDBC10292EBAE62300D08CEB /* Telescope.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = DDBC10202EBAE62300D08CEB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DDBC10382EBAE65F00D08CEB /* XCRemoteSwiftPackageReference "HotKey" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DDBC102A2EBAE62300D08CEB /* Products */;
 			projectDirPath = "";
@@ -327,6 +336,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DDBC10382EBAE65F00D08CEB /* XCRemoteSwiftPackageReference "HotKey" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/soffes/HotKey";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DDBC10392EBAE65F00D08CEB /* HotKey */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DDBC10382EBAE65F00D08CEB /* XCRemoteSwiftPackageReference "HotKey" */;
+			productName = HotKey;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DDBC10212EBAE62300D08CEB /* Project object */;
 }

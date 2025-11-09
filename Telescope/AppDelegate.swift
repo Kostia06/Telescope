@@ -1,30 +1,23 @@
-//
-//  AppDelegate.swift
-//  Telescope
-//
-//  Created by Kostia Iln on 2025-11-04.
-//
-
 import Cocoa
+import HotKey
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
+    var hotKey: HotKey!
+    var windowController: SpotlightWindowController!
+    var commandManager: CommandManager!
 
-    @IBOutlet var window: NSWindow!
-
-
-    func applicationDidFinishLaunching(_ aNotification: Notification) {
-        // Insert code here to initialize your application
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        commandManager = CommandManager()
+        windowController = SpotlightWindowController(commandManager: commandManager)
+        registerHotKey()
     }
 
-    func applicationWillTerminate(_ aNotification: Notification) {
-        // Insert code here to tear down your application
+    func registerHotKey() {
+        hotKey = HotKey(key: .space, modifiers: [.command])
+        hotKey.keyDownHandler = { [weak self] in
+            self?.windowController.togglePanel()
+        }
     }
-
-    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
-        return true
-    }
-
-
 }
-
