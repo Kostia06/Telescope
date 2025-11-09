@@ -153,14 +153,15 @@ extension SpotlightViewController: NSTextFieldDelegate {
     func controlTextDidChange(_ obj: Notification) {
         guard let textField = obj.object as? NSTextField else { return }
         let searchText = textField.stringValue
+        let previousCount = filteredCommands.count
 
         // Check if in command mode (starts with :)
         if searchText.hasPrefix(":") {
             // Command mode: filter commands
             filteredCommands = commandManager.filterCommands(with: searchText)
             resultsTableView.reloadData()
-            // Always select first result when filtering
-            if !filteredCommands.isEmpty {
+            // Only reset selection if the number of results changes
+            if !filteredCommands.isEmpty && previousCount != filteredCommands.count {
                 resultsTableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
                 resultsTableView.scrollRowToVisible(0)
             }
@@ -173,8 +174,8 @@ extension SpotlightViewController: NSTextFieldDelegate {
 
                 self.filteredCommands = results
                 self.resultsTableView.reloadData()
-                // Always select first result
-                if !results.isEmpty {
+                // Only reset selection if the number of results changes
+                if !results.isEmpty && previousCount != results.count {
                     self.resultsTableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
                     self.resultsTableView.scrollRowToVisible(0)
                 }
