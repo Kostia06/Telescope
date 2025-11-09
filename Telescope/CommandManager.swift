@@ -35,12 +35,13 @@ class CommandManager {
 
             // Search in current directory first, then expand
             let searchPaths = [
-                currentDir,
-                "/Documents",
-                "/Downloads",
-                "/Desktop",
-                "/Developer",
-                "/Projects",
+                "\(homeDirectory)/Documents",
+                "\(homeDirectory)/Downloads",
+                "\(homeDirectory)/Desktop",
+                "\(homeDirectory)/Developer",
+                "\(homeDirectory)/Projects",
+                homeDirectory,
+                currentDir
             ]
 
             // Approximate fuzzy matching (lenient, like fzf)
