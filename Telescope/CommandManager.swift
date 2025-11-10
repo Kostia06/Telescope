@@ -49,12 +49,6 @@ class CommandManager {
                 let patternLower = pattern.lowercased()
                 let textLower = text.lowercased()
 
-                // Exact substring match gets highest score
-                if textLower.contains(patternLower) {
-                    return (true, 2000)
-                }
-
-                // Approximate fuzzy matching: characters in order but very lenient
                 var patternIndex = patternLower.startIndex
                 var score = 0
                 var lastMatchIndex = -1
@@ -64,19 +58,18 @@ class CommandManager {
                     if patternIndex < patternLower.endIndex && char == patternLower[patternIndex] {
                         if lastMatchIndex == index - 1 {
                             consecutiveCount += 1
-                            score += 10 + consecutiveCount * 2 // Big bonus for consecutive matches
+                            score += 20 + consecutiveCount * 5 // Higher bonus for consecutive matches
                         } else {
                             consecutiveCount = 0
-                            score += 2 // Small penalty for gaps
+                            score += 1 // Lower penalty for gaps
                         }
                         lastMatchIndex = index
                         patternIndex = patternLower.index(after: patternIndex)
                     }
                 }
 
-                // Very lenient - match if we got most of the pattern
                 let matchedChars = patternLower.distance(from: patternLower.startIndex, to: patternIndex)
-                let requiredMatch = isPath ? Int(ceil(Double(patternLower.count) * 0.6)) : patternLower.count
+                let requiredMatch = isPath ? Int(ceil(Double(patternLower.count) * 0.4)) : Int(ceil(Double(patternLower.count) * 0.8))
                 let matches = matchedChars >= requiredMatch
 
                 return (matches, matches ? score : 0)

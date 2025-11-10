@@ -50,7 +50,8 @@ class SpotlightViewController: NSViewController {
         view.addSubview(visualEffectView)
 
         // Search field container
-        let searchContainer = NSView(frame: NSRect(x: 0, y: 280, width: 560, height: 60))
+        let searchContainerWidth: CGFloat = 560
+        let searchContainer = NSView(frame: NSRect(x: (view.bounds.width - searchContainerWidth) / 2, y: 280, width: searchContainerWidth, height: 60))
         visualEffectView.addSubview(searchContainer)
 
         // Search icon
@@ -60,7 +61,7 @@ class SpotlightViewController: NSViewController {
         searchContainer.addSubview(searchIcon)
 
         // Search field with enhanced styling
-        searchField = NSTextField(frame: NSRect(x: 52, y: 16, width: 488, height: 32))
+        searchField = NSTextField(frame: NSRect(x: 52, y: 16, width: searchContainerWidth - 72, height: 32))
         searchField.placeholderString = "Search files... (type : for commands)"
         searchField.font = NSFont.systemFont(ofSize: 22, weight: .light)
         searchField.focusRingType = .none
