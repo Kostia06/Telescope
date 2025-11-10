@@ -14,7 +14,7 @@ class CommandManager {
             guard let self = self else { return }
 
             var results: [Command] = []
-            let maxResults = 100
+            let maxResults = 15
             let currentDir = FileManager.default.currentDirectoryPath
 
             // Directories to ignore (like .gitignore patterns)
@@ -43,10 +43,14 @@ class CommandManager {
                 currentDir
             ]
 
-            // Approximate fuzzy matching (lenient, like fzf)
+            // Approximate fuzzy matching (more strict)
             func fuzzyMatch(_ pattern: String, _ text: String, isPath: Bool = false) -> (matches: Bool, score: Int) {
                 let patternLower = pattern.lowercased()
                 let textLower = text.lowercased()
+
+                if textLower.contains(patternLower) {
+                    return (true, 10000)
+                }
 
                 var patternIndex = patternLower.startIndex
                 var score = 0
@@ -57,10 +61,10 @@ class CommandManager {
                     if patternIndex < patternLower.endIndex && char == patternLower[patternIndex] {
                         if lastMatchIndex == index - 1 {
                             consecutiveCount += 1
-                            score += 20 + consecutiveCount * 5 // Higher bonus for consecutive matches
+                            score += 40 + consecutiveCount * 15
                         } else {
                             consecutiveCount = 0
-                            score += 1 // Lower penalty for gaps
+                            score += 5
                         }
                         lastMatchIndex = index
                         patternIndex = patternLower.index(after: patternIndex)
@@ -68,7 +72,7 @@ class CommandManager {
                 }
 
                 let matchedChars = patternLower.distance(from: patternLower.startIndex, to: patternIndex)
-                let requiredMatch = isPath ? Int(ceil(Double(patternLower.count) * 0.4)) : Int(ceil(Double(patternLower.count) * 0.8))
+                let requiredMatch = isPath ? Int(ceil(Double(patternLower.count) * 0.6)) : Int(ceil(Double(patternLower.count) * 0.9))
                 let matches = matchedChars >= requiredMatch
 
                 return (matches, matches ? score : 0)
@@ -90,21 +94,17 @@ class CommandManager {
 
                     let fileName = fileURL.lastPathComponent
 
-                    // Skip hidden files but allow dotfiles in home directory
                     if fileName.hasPrefix(".") {
                         if ignoredDirectories.contains(fileName) {
                             enumerator.skipDescendants()
                             continue
                         }
-                        // Allow dotfiles in home directory (like .vimrc, .zshrc)
                         if fileURL.path.hasPrefix(self.homeDirectory) &&
                            fileURL.deletingLastPathComponent().path == self.homeDirectory {
-                            // Allow it
                         } else {
                             continue
                         }
                     }
-                    // Skip ignored directories
                     if let resourceValues = try? fileURL.resourceValues(forKeys: [.isDirectoryKey]),
                        resourceValues.isDirectory == true {
                         if ignoredDirectories.contains(fileName) {
@@ -113,35 +113,27 @@ class CommandManager {
                         }
                     }
 
-                    // Match against both filename and path
                     let relativePath = fileURL.path.replacingOccurrences(of: self.homeDirectory + "/", with: "")
-
-                    // Try matching filename first
                     var matchResult = fuzzyMatch(query, fileName, isPath: false)
 
-                    // If no match on filename, try the full path (for searches like "documents/projects")
                     if !matchResult.matches {
                         matchResult = fuzzyMatch(query, relativePath, isPath: true)
                     } else {
-                        // Boost filename matches
-                        matchResult.score += 500
+                        matchResult.score += 1000
                     }
 
                     if matchResult.matches {
                         var score = matchResult.score
 
-                        // Boost score for files in current directory
                         if fileURL.path.hasPrefix(currentDir) {
-                            score += 800
+                            score += 1200
                         }
 
-                        // Boost score for code files
                         let fileExtension = fileURL.pathExtension.lowercased()
                         if codeExtensions.contains(fileExtension) {
-                            score += 150
+                            score += 200
                         }
 
-                        // Boost score for shorter paths (closer to root)
                         let depth = fileURL.pathComponents.count
                         score -= depth
 
@@ -151,14 +143,12 @@ class CommandManager {
                         ))
                     }
 
-                    // Limit search depth
-                    if fileURL.pathComponents.count > searchPath.components(separatedBy: "/").count + 6 {
+                    if fileURL.pathComponents.count > searchPath.components(separatedBy: "/").count + 7 {
                         enumerator.skipDescendants()
                     }
                 }
             }
 
-            // Sort by score and take top results
             scoredResults.sort { $0.score > $1.score }
             results = scoredResults.prefix(maxResults).map { $0.command }
 
@@ -170,8 +160,6 @@ class CommandManager {
 
     private func setupCommands() {
         commands = [
-
-            // Yabai Commands
             Command(name: ":yabai focus-left", description: "Focus window to the left", icon: "arrow.left.square") {
                 self.executeYabaiCommand(["-m", "window", "--focus", "west"])
             },
@@ -218,51 +206,38 @@ class CommandManager {
                 self.executeYabaiCommand(["-m", "space", "--focus", "prev"])
             },
             Command(name: ":yabai restart", description: "Restart Yabai service", icon: "arrow.triangle.2.circlepath") {
-                let script = """
-                tell application "Terminal"
-                    do script "yabai --restart-service"
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
+                self.executeYabaiCommand(["--restart-service"])
             },
-
-            // System Commands
             Command(name: ":term", description: "Launch Terminal app", icon: "terminal") {
-                NSWorkspace.shared.launchApplication("Wezterm")
+                NSWorkspace.shared.launchApplication("WezTerm")
             },
-          
-            // Vim editor commands
-            Command(name: ":vim", description: "Open file in Vim (Terminal)", icon: "terminal.fill") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "vim"
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
+            Command(name: ":edit", description: "Open selected file in Neovim", icon: "pencil") {
+                // This action is handled in SpotlightViewController
             },
-            Command(name: ":nvim", description: "Open file in Neovim", icon: "chevron.left.forwardslash.chevron.right") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "nvim"
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
-
             Command(name: ":q", description: "Quit Telescope", icon: "power") {
                 NSApplication.shared.terminate(nil)
             }
         ]
     }
 
+    func openInNeovim(filePath: String) {
+        let script = """
+        tell application "WezTerm"
+            create window with default profile
+            tell current session of current window
+                write text "nvim '\(filePath)'"
+            end tell
+        end tell
+        """
+        if let appleScript = NSAppleScript(source: script) {
+            var error: NSDictionary?
+            appleScript.executeAndReturnError(&error)
+            if let error = error {
+                print("Error executing AppleScript: \(error)")
+            }
+        }
+    }
+    
     private func executeYabaiCommand(_ arguments: [String]) {
         let task = Process()
         task.launchPath = "/usr/local/bin/yabai"
@@ -281,20 +256,17 @@ class CommandManager {
     }
     
     func filterCommands(with searchText: String) -> [Command] {
-        // Empty search returns no results (user should type to see files)
         if searchText.isEmpty {
             return []
         }
 
-        // Command mode: starts with ":"
         if searchText.hasPrefix(":") {
+            let commandSearch = searchText.lowercased()
             return commands.filter {
-                $0.name.lowercased().contains(searchText.lowercased()) ||
-                $0.description.lowercased().contains(searchText.lowercased())
+                $0.name.lowercased().contains(commandSearch) && $0.name != ":edit"
             }
         }
 
-        // File search mode: no results yet, will be populated by async search
         return []
     }
 

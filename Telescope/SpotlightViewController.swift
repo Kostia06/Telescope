@@ -128,7 +128,6 @@ class SpotlightViewController: NSViewController {
     }
     
     @objc func executeSelectedCommand() {
-        // Execute the selected command or the first one if none selected
         guard !filteredCommands.isEmpty else {
             print("No commands to execute")
             return
@@ -136,13 +135,16 @@ class SpotlightViewController: NSViewController {
 
         let selectedRow = resultsTableView.selectedRow
         let rowToExecute = (selectedRow >= 0 && selectedRow < filteredCommands.count) ? selectedRow : 0
+        let command = filteredCommands[rowToExecute]
 
-        print("Executing command at row \(rowToExecute): \(filteredCommands[rowToExecute].name)")
+        if command.name == ":edit" {
+            if let filePath = filteredCommands.first(where: { $0.name != ":edit" })?.description {
+                commandManager.openInNeovim(filePath: filePath)
+            }
+        } else {
+            command.action()
+        }
 
-        // Execute the command
-        filteredCommands[rowToExecute].action()
-
-        // Hide the panel after a short delay to ensure the action completes
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             self?.windowController?.hidePanel()
         }
@@ -156,33 +158,31 @@ extension SpotlightViewController: NSTextFieldDelegate {
         let searchText = textField.stringValue
         let previousCount = filteredCommands.count
 
-        // Check if in command mode (starts with :)
         if searchText.hasPrefix(":") {
-            // Command mode: filter commands
             filteredCommands = commandManager.filterCommands(with: searchText)
+            if searchText.lowercased() == ":edit" {
+                if let editCommand = commandManager.commands.first(where: { $0.name == ":edit" }) {
+                    filteredCommands.append(editCommand)
+                }
+            }
             resultsTableView.reloadData()
-            // Only reset selection if the number of results changes
             if !filteredCommands.isEmpty && previousCount != filteredCommands.count {
                 resultsTableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
                 resultsTableView.scrollRowToVisible(0)
             }
         } else if !searchText.isEmpty {
-            // File search mode: search files asynchronously
             commandManager.searchFiles(query: searchText) { [weak self] results in
                 guard let self = self else { return }
-                // Only update if the search text hasn't changed
                 guard textField.stringValue == searchText else { return }
 
                 self.filteredCommands = results
                 self.resultsTableView.reloadData()
-                // Only reset selection if the number of results changes
                 if !results.isEmpty && previousCount != results.count {
                     self.resultsTableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
                     self.resultsTableView.scrollRowToVisible(0)
                 }
             }
         } else {
-            // Empty search: hide the panel
             filteredCommands = []
             resultsTableView.reloadData()
             windowController?.hidePanel()
