@@ -182,9 +182,10 @@ extension SpotlightViewController: NSTextFieldDelegate {
                 }
             }
         } else {
-            // Empty search: show nothing
+            // Empty search: hide the panel
             filteredCommands = []
             resultsTableView.reloadData()
+            windowController?.hidePanel()
         }
     }
     

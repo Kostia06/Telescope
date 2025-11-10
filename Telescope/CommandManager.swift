@@ -39,7 +39,6 @@ class CommandManager {
                 "\(homeDirectory)/Downloads",
                 "\(homeDirectory)/Desktop",
                 "\(homeDirectory)/Developer",
-                "\(homeDirectory)/Projects",
                 homeDirectory,
                 currentDir
             ]
@@ -105,7 +104,6 @@ class CommandManager {
                             continue
                         }
                     }
-
                     // Skip ignored directories
                     if let resourceValues = try? fileURL.resourceValues(forKeys: [.isDirectoryKey]),
                        resourceValues.isDirectory == true {
@@ -172,102 +170,6 @@ class CommandManager {
 
     private func setupCommands() {
         commands = [
-            // Vim-style Commands
-            Command(name: ":vsplit", description: "Open vertical split in Vim", icon: "rectangle.split.2x1") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "vim -c 'vsplit'"
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
-            Command(name: ":split", description: "Open horizontal split in Vim", icon: "rectangle.split.1x2") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "vim -c 'split'"
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
-            Command(name: ":tabnew", description: "Open new tab in Vim", icon: "square.stack") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "vim -c 'tabnew'"
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
-            Command(name: ":term", description: "Open terminal in Vim", icon: "terminal") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "vim -c 'terminal'"
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
-
-            // File Operation Commands
-            Command(name: ":touch", description: "Create new file", icon: "doc.badge.plus") {
-                self.promptForFileName { fileName in
-                    guard !fileName.isEmpty else { return }
-                    let path = "\(FileManager.default.currentDirectoryPath)/\(fileName)"
-                    FileManager.default.createFile(atPath: path, contents: nil)
-                    NSWorkspace.shared.open(URL(fileURLWithPath: path))
-                }
-            },
-            Command(name: ":mkdir", description: "Create new directory", icon: "folder.badge.plus") {
-                self.promptForFileName { dirName in
-                    guard !dirName.isEmpty else { return }
-                    let path = "\(FileManager.default.currentDirectoryPath)/\(dirName)"
-                    try? FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
-                    NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
-                }
-            },
-            Command(name: ":rm", description: "Remove file or directory", icon: "trash") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "rm -i "
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
-            Command(name: ":mv", description: "Move/rename file", icon: "arrow.right.doc.on.clipboard") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "mv "
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
-            Command(name: ":cp", description: "Copy file", icon: "doc.on.doc") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "cp "
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
 
             // Yabai Commands
             Command(name: ":yabai focus-left", description: "Focus window to the left", icon: "arrow.left.square") {
@@ -327,28 +229,10 @@ class CommandManager {
             },
 
             // System Commands
-            Command(name: ":terminal", description: "Launch Terminal app", icon: "terminal") {
-                NSWorkspace.shared.launchApplication("Terminal")
+            Command(name: ":term", description: "Launch Terminal app", icon: "terminal") {
+                NSWorkspace.shared.launchApplication("Wezterm")
             },
-            Command(name: ":lock", description: "Lock your Mac", icon: "lock") {
-                let task = Process()
-                task.launchPath = "/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession"
-                task.arguments = ["-suspend"]
-                task.launch()
-            }, 
-            Command(name: ":sleep", description: "Put Mac to sleep", icon: "moon.zzz") {
-                let task = Process()
-                task.launchPath = "/usr/bin/pmset"
-                task.arguments = ["sleepnow"]
-                task.launch()
-            },
-            Command(name: ":screenshot", description: "Take a screenshot", icon: "camera") {
-                let task = Process()
-                task.launchPath = "/usr/sbin/screencapture"
-                task.arguments = ["-i"]
-                task.launch()
-            },
-
+          
             // Vim editor commands
             Command(name: ":vim", description: "Open file in Vim (Terminal)", icon: "terminal.fill") {
                 let script = """
@@ -372,26 +256,8 @@ class CommandManager {
                     appleScript.executeAndReturnError(nil)
                 }
             },
-            Command(name: ":vimrc", description: "Edit ~/.vimrc", icon: "doc.text") {
-                let script = """
-                tell application "Terminal"
-                    activate
-                    do script "vim ~/.vimrc"
-                end tell
-                """
-                if let appleScript = NSAppleScript(source: script) {
-                    appleScript.executeAndReturnError(nil)
-                }
-            },
 
-            // Quick access
-            Command(name: ":finder", description: "Open Finder", icon: "folder") {
-                NSWorkspace.shared.launchApplication("Finder")
-            },
-            Command(name: ":safari", description: "Open Safari", icon: "safari") {
-                NSWorkspace.shared.launchApplication("Safari")
-            },
-            Command(name: ":quit", description: "Quit Telescope", icon: "power") {
+            Command(name: ":q", description: "Quit Telescope", icon: "power") {
                 NSApplication.shared.terminate(nil)
             }
         ]
