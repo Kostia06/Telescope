@@ -1,159 +1,177 @@
 import Cocoa
+import Fuse
 
 class CommandManager {
     private(set) var commands: [Command] = []
-    private var fileSearchQueue = DispatchQueue(label: "com.telescope.filesearch", qos: .userInitiated)
+    private var appSearchQueue = DispatchQueue(label: "com.telescope.appsearch", qos: .userInitiated)
     private let homeDirectory = FileManager.default.homeDirectoryForCurrentUser.path
+    private weak var drawingModeController: DrawingModeController?
+    private weak var soundModeController: SoundModeController?
 
-    init() {
+    // Search cancellation tracking
+    private var currentSearchID: Int = 0
+    private let searchLock = NSLock()
+
+    // Fuse instance for fuzzy matching (thread-safe as serial queue)
+    private let fuse: Fuse
+
+    init(drawingModeController: DrawingModeController? = nil, soundModeController: SoundModeController? = nil) {
+        self.drawingModeController = drawingModeController
+        self.soundModeController = soundModeController
+
+        // Configure Fuse for optimal fuzzy searching
+        self.fuse = Fuse(
+            location: 0,           // Prefer matches at start
+            distance: 100,         // Search distance
+            threshold: 0.4         // Lower = stricter matching (0.0-1.0)
+        )
+
         setupCommands()
     }
 
     func searchFiles(query: String, completion: @escaping ([Command]) -> Void) {
-        fileSearchQueue.async { [weak self] in
-            guard let self = self else { return }
+        // Increment search ID to cancel previous searches
+        searchLock.lock()
+        currentSearchID += 1
+        let searchID = currentSearchID
+        searchLock.unlock()
 
-            var results: [Command] = []
-            let maxResults = 15
-            let currentDir = FileManager.default.currentDirectoryPath
+        // Run search on background queue
+        appSearchQueue.async { [weak self] in
+            guard let self = self else {
+                DispatchQueue.main.async {
+                    completion([])
+                }
+                return
+            }
 
-            // Directories to ignore (like .gitignore patterns)
-            let ignoredDirectories = [
-                ".git", ".next", "node_modules", ".vscode", ".idea",
-                ".DS_Store", "dist", "build", ".cache", ".gradle",
-                ".venv", "venv", "__pycache__", ".pytest_cache",
-                "target", ".svn", ".hg", "vendor", ".terraform"
-            ]
+            // Check if this search is still current
+            func isCurrentSearch() -> Bool {
+                self.searchLock.lock()
+                let isCurrent = searchID == self.currentSearchID
+                self.searchLock.unlock()
+                return isCurrent
+            }
 
-            // File extensions to prioritize
-            let codeExtensions = [
-                "swift", "js", "ts", "tsx", "jsx", "py", "go", "rs",
-                "java", "c", "cpp", "h", "hpp", "cs", "rb", "php",
-                "html", "css", "scss", "json", "yaml", "yml", "md",
-                "txt", "sh", "zsh", "vim"
-            ]
+            let maxAppResults = 20
 
-            // Search in current directory first, then expand
-            let searchPaths = [
-                "\(homeDirectory)/Documents",
-                "\(homeDirectory)/Downloads",
-                "\(homeDirectory)/Desktop",
-                "\(homeDirectory)/Developer",
-                homeDirectory,
-                currentDir
-            ]
-
-            // Approximate fuzzy matching (more strict)
-            func fuzzyMatch(_ pattern: String, _ text: String, isPath: Bool = false) -> (matches: Bool, score: Int) {
+            // Fuzzy match using Fuse.swift (safe to use self.fuse on serial queue)
+            func fuzzyMatch(_ pattern: String, _ text: String) -> (matches: Bool, score: Int) {
                 let patternLower = pattern.lowercased()
                 let textLower = text.lowercased()
 
-                if textLower.contains(patternLower) {
-                    return (true, 10000)
+                // Exact match gets highest priority
+                if textLower == patternLower {
+                    return (true, 1000000)
                 }
 
-                var patternIndex = patternLower.startIndex
-                var score = 0
-                var lastMatchIndex = -1
-                var consecutiveCount = 0
+                // Starts with pattern - very high priority
+                if textLower.hasPrefix(patternLower) {
+                    return (true, 500000)
+                }
 
-                for (index, char) in textLower.enumerated() {
-                    if patternIndex < patternLower.endIndex && char == patternLower[patternIndex] {
-                        if lastMatchIndex == index - 1 {
-                            consecutiveCount += 1
-                            score += 40 + consecutiveCount * 15
-                        } else {
-                            consecutiveCount = 0
-                            score += 5
+                // Use Fuse for fuzzy matching (accessing self.fuse safely on serial queue)
+                if let result = self.fuse.search(patternLower, in: textLower) {
+                    // Fuse returns score from 0.0 (perfect) to 1.0 (poor)
+                    // Convert to our scoring system: lower Fuse score = higher our score
+                    let fuseScore = result.score
+
+                    // Only accept matches below threshold (0.4)
+                    if fuseScore <= 0.4 {
+                        // Convert Fuse score (0.0-0.4) to our score (100000-10000)
+                        // Better matches (lower fuseScore) get higher scores
+                        let baseScore = Int((1.0 - fuseScore) * 100000)
+
+                        // Check if it's a substring match for bonus
+                        if textLower.contains(patternLower) {
+                            if let range = textLower.range(of: patternLower) {
+                                let position = textLower.distance(from: textLower.startIndex, to: range.lowerBound)
+
+                                // Earlier position = higher score
+                                let positionBonus = max(0, 50000 - (position * 500))
+
+                                // Check word boundary
+                                let components = textLower.components(separatedBy: CharacterSet.alphanumerics.inverted)
+                                for component in components {
+                                    if component == patternLower {
+                                        return (true, baseScore + positionBonus + 100000)
+                                    }
+                                    if component.hasPrefix(patternLower) {
+                                        return (true, baseScore + positionBonus + 50000)
+                                    }
+                                }
+
+                                return (true, baseScore + positionBonus + 20000)
+                            }
                         }
-                        lastMatchIndex = index
-                        patternIndex = patternLower.index(after: patternIndex)
+
+                        return (true, baseScore)
                     }
                 }
 
-                let matchedChars = patternLower.distance(from: patternLower.startIndex, to: patternIndex)
-                let requiredMatch = isPath ? Int(ceil(Double(patternLower.count) * 0.6)) : Int(ceil(Double(patternLower.count) * 0.9))
-                let matches = matchedChars >= requiredMatch
-
-                return (matches, matches ? score : 0)
+                return (false, 0)
             }
 
-            var scoredResults: [(command: Command, score: Int)] = []
+            // Search for apps
+            var scoredAppResults: [(command: Command, score: Int)] = []
+            let appSearchPaths = [
+                "/Applications",
+                "/System/Applications",
+                "\(self.homeDirectory)/Applications"
+            ]
 
-            for searchPath in searchPaths {
-                if scoredResults.count >= maxResults * 2 { break }
+            for appPath in appSearchPaths {
+                // Check if search was cancelled
+                if !isCurrentSearch() {
+                    return
+                }
 
-                guard let enumerator = FileManager.default.enumerator(
-                    at: URL(fileURLWithPath: searchPath),
-                    includingPropertiesForKeys: [.isDirectoryKey, .nameKey],
-                    options: [.skipsPackageDescendants]
+                guard let appEnumerator = FileManager.default.enumerator(
+                    at: URL(fileURLWithPath: appPath),
+                    includingPropertiesForKeys: [.isDirectoryKey],
+                    options: [.skipsHiddenFiles, .skipsPackageDescendants]
                 ) else { continue }
 
-                for case let fileURL as URL in enumerator {
-                    if scoredResults.count >= maxResults * 2 { break }
-
-                    let fileName = fileURL.lastPathComponent
-
-                    if fileName.hasPrefix(".") {
-                        if ignoredDirectories.contains(fileName) {
-                            enumerator.skipDescendants()
-                            continue
-                        }
-                        if fileURL.path.hasPrefix(self.homeDirectory) &&
-                           fileURL.deletingLastPathComponent().path == self.homeDirectory {
-                        } else {
-                            continue
-                        }
-                    }
-                    if let resourceValues = try? fileURL.resourceValues(forKeys: [.isDirectoryKey]),
-                       resourceValues.isDirectory == true {
-                        if ignoredDirectories.contains(fileName) {
-                            enumerator.skipDescendants()
-                            continue
-                        }
+                for case let appURL as URL in appEnumerator {
+                    // Check if search was cancelled
+                    if !isCurrentSearch() {
+                        return
                     }
 
-                    let relativePath = fileURL.path.replacingOccurrences(of: self.homeDirectory + "/", with: "")
-                    var matchResult = fuzzyMatch(query, fileName, isPath: false)
+                    guard appURL.pathExtension == "app" else { continue }
 
-                    if !matchResult.matches {
-                        matchResult = fuzzyMatch(query, relativePath, isPath: true)
-                    } else {
-                        matchResult.score += 1000
-                    }
+                    let appName = appURL.deletingPathExtension().lastPathComponent
+                    let matchResult = fuzzyMatch(query, appName)
 
                     if matchResult.matches {
-                        var score = matchResult.score
-
-                        if fileURL.path.hasPrefix(currentDir) {
-                            score += 1200
-                        }
-
-                        let fileExtension = fileURL.pathExtension.lowercased()
-                        if codeExtensions.contains(fileExtension) {
-                            score += 200
-                        }
-
-                        let depth = fileURL.pathComponents.count
-                        score -= depth
-
-                        scoredResults.append((
-                            command: Command.fileCommand(path: fileURL.path),
-                            score: score
+                        scoredAppResults.append((
+                            command: Command.appCommand(path: appURL.path, name: appName),
+                            score: matchResult.score
                         ))
-                    }
-
-                    if fileURL.pathComponents.count > searchPath.components(separatedBy: "/").count + 7 {
-                        enumerator.skipDescendants()
                     }
                 }
             }
 
-            scoredResults.sort { $0.score > $1.score }
-            results = scoredResults.prefix(maxResults).map { $0.command }
+            // Final check before returning results
+            if !isCurrentSearch() {
+                return
+            }
 
-            DispatchQueue.main.async {
-                completion(results)
+            // Sort by score and limit results
+            scoredAppResults.sort { $0.score > $1.score }
+            let appResults = scoredAppResults.prefix(maxAppResults).map { $0.command }
+
+            // Only call completion if this search is still current
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+
+                self.searchLock.lock()
+                let isCurrent = searchID == self.currentSearchID
+                self.searchLock.unlock()
+
+                if isCurrent {
+                    completion(appResults)
+                }
             }
         }
     }
@@ -213,6 +231,12 @@ class CommandManager {
             },
             Command(name: ":edit", description: "Open selected file in Neovim", icon: "pencil") {
                 // This action is handled in SpotlightViewController
+            },
+            Command(name: ":draw", description: "Enter drawing mode", icon: "pencil.tip.crop.circle") {
+                self.drawingModeController?.toggleDrawingMode()
+            },
+            Command(name: ":sound", description: "Control app volumes", icon: "speaker.wave.3") {
+                self.soundModeController?.toggleSoundMode()
             },
             Command(name: ":q", description: "Quit Telescope", icon: "power") {
                 NSApplication.shared.terminate(nil)

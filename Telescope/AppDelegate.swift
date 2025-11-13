@@ -6,10 +6,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var hotKey: HotKey!
     var windowController: SpotlightWindowController!
     var commandManager: CommandManager!
+    var drawingModeController: DrawingModeController!
+    var soundModeController: SoundModeController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        commandManager = CommandManager()
+        drawingModeController = DrawingModeController()
+        soundModeController = SoundModeController()
+        commandManager = CommandManager(drawingModeController: drawingModeController, soundModeController: soundModeController)
         windowController = SpotlightWindowController(commandManager: commandManager)
         registerHotKey()
     }
@@ -19,5 +23,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hotKey.keyDownHandler = { [weak self] in
             self?.windowController.togglePanel()
         }
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Prevent Command+Q from quitting the app
+        return .terminateCancel
     }
 }

@@ -1,0 +1,60 @@
+
+# Xcode
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+
+# SwiftPM
+.swiftpm/
+.build/
+
+# CocoaPods
+Pods/
+podfile.lock
+podfile.lock.orig
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Archives
+*.xcarchive
+
+# Logs
+*.log
+
+
+.git
+
+*.xcodeproj/
+*.tar.gz
+
+
+# Swift Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Certificates & Provisioning
+*.p12
+*.mobileprovision
+*.cer
+
+# Generated files
+*.generated.swift
+
+# User-specific
+*.swp
+*.swm
+*.swo
+*.orig
+
+.claude

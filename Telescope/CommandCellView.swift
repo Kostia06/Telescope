@@ -56,7 +56,14 @@ class CommandCellView: NSView {
     func configure(with command: Command) {
         nameLabel.stringValue = command.name
         descLabel.stringValue = command.description
-        iconView.image = NSImage(systemSymbolName: command.icon, accessibilityDescription: nil)
-        iconView.contentTintColor = .controlAccentColor
+
+        // Use custom icon if available (e.g., app icons), otherwise use SF Symbol
+        if let customIcon = command.customIcon {
+            iconView.image = customIcon
+            iconView.contentTintColor = nil // Don't tint app icons
+        } else {
+            iconView.image = NSImage(systemSymbolName: command.icon, accessibilityDescription: nil)
+            iconView.contentTintColor = .controlAccentColor
+        }
     }
 }

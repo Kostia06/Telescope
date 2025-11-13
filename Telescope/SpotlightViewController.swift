@@ -3,12 +3,15 @@ import Cocoa
 class SpotlightViewController: NSViewController {
     private var commandManager: CommandManager
     private weak var windowController: SpotlightWindowController?
-    
+
     private var searchField: NSTextField!
     private var resultsTableView: NSTableView!
     private var scrollView: NSScrollView!
     private var visualEffectView: NSVisualEffectView!
     private var filteredCommands: [Command] = []
+
+    // Debounce timer for search
+    private var searchDebounceTimer: Timer?
     
     init(commandManager: CommandManager, windowController: SpotlightWindowController) {
         self.commandManager = commandManager
@@ -21,9 +24,9 @@ class SpotlightViewController: NSViewController {
     }
     
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 560, height: 340))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 560, height: 120))
         setupUI()
-        filteredCommands = commandManager.commands
+        filteredCommands = []
     }
     
     private func setupUI() {
@@ -35,6 +38,7 @@ class SpotlightViewController: NSViewController {
         visualEffectView.wantsLayer = true
         visualEffectView.layer?.cornerRadius = 14
         visualEffectView.layer?.masksToBounds = true
+        visualEffectView.autoresizingMask = [.width, .height]
 
         // Add subtle border
         visualEffectView.layer?.borderWidth = 1
@@ -43,15 +47,17 @@ class SpotlightViewController: NSViewController {
         // Add shadow for depth
         view.wantsLayer = true
         view.layer?.shadowColor = NSColor.black.cgColor
-        view.layer?.shadowOpacity = 0.3
+        view.layer?.shadowOpacity = 0.5
         view.layer?.shadowOffset = NSSize(width: 0, height: -4)
         view.layer?.shadowRadius = 20
 
         view.addSubview(visualEffectView)
 
-        // Search field container
+        // Search field container (anchored to top)
         let searchContainerWidth: CGFloat = 560
-        let searchContainer = NSView(frame: NSRect(x: (view.bounds.width - searchContainerWidth) / 2, y: 280, width: searchContainerWidth, height: 60))
+        let searchContainerHeight: CGFloat = 60
+        let searchContainer = NSView(frame: NSRect(x: (view.bounds.width - searchContainerWidth) / 2, y: view.bounds.height - searchContainerHeight - 8, width: searchContainerWidth, height: searchContainerHeight))
+        searchContainer.autoresizingMask = [.minYMargin]
         visualEffectView.addSubview(searchContainer)
 
         // Search icon
@@ -62,7 +68,7 @@ class SpotlightViewController: NSViewController {
 
         // Search field with enhanced styling
         searchField = NSTextField(frame: NSRect(x: 52, y: 16, width: searchContainerWidth - 72, height: 32))
-        searchField.placeholderString = "Search files... (type : for commands)"
+        searchField.placeholderString = "Search apps... (type : for commands)"
         searchField.font = NSFont.systemFont(ofSize: 22, weight: .light)
         searchField.focusRingType = .none
         searchField.isBordered = false
@@ -77,14 +83,16 @@ class SpotlightViewController: NSViewController {
             .foregroundColor: NSColor.placeholderTextColor,
             .font: NSFont.systemFont(ofSize: 22, weight: .light)
         ]
-        searchField.placeholderAttributedString = NSAttributedString(string: "Search files... (type : for commands)", attributes: attrs)
+        searchField.placeholderAttributedString = NSAttributedString(string: "Search apps... (type : for commands)", attributes: attrs)
 
         searchContainer.addSubview(searchField)
 
-        // Separator
-        let separator = NSBox(frame: NSRect(x: 16, y: 279, width: 528, height: 1))
+        // Separator (anchored below search bar)
+        let separatorY = view.bounds.height - searchContainerHeight - 10
+        let separator = NSBox(frame: NSRect(x: 16, y: separatorY, width: 528, height: 1))
         separator.boxType = .separator
         separator.fillColor = NSColor.separatorColor.withAlphaComponent(0.3)
+        separator.autoresizingMask = [.minYMargin]
         visualEffectView.addSubview(separator)
 
         // Results table view
@@ -104,12 +112,14 @@ class SpotlightViewController: NSViewController {
         column.width = 512
         resultsTableView.addTableColumn(column)
 
-        scrollView = NSScrollView(frame: NSRect(x: 24, y: 16, width: 512, height: 255))
+        let scrollHeight = view.bounds.height - searchContainerHeight - 28
+        scrollView = NSScrollView(frame: NSRect(x: 24, y: 0, width: 512, height: scrollHeight))
         scrollView.documentView = resultsTableView
         scrollView.hasVerticalScroller = true
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.scrollerStyle = .overlay
+        scrollView.autoresizingMask = [.width, .height]
         visualEffectView.addSubview(scrollView)
     }
     
@@ -118,6 +128,7 @@ class SpotlightViewController: NSViewController {
         filteredCommands = []
         resultsTableView.reloadData()
         resultsTableView.deselectAll(nil)
+        windowController?.updateWindowHeight(for: 0)
 
         // Ensure the window and field can accept input
         DispatchQueue.main.async { [weak self] in
@@ -156,9 +167,12 @@ extension SpotlightViewController: NSTextFieldDelegate {
     func controlTextDidChange(_ obj: Notification) {
         guard let textField = obj.object as? NSTextField else { return }
         let searchText = textField.stringValue
-        let previousCount = filteredCommands.count
+
+        // Cancel any pending search
+        searchDebounceTimer?.invalidate()
 
         if searchText.hasPrefix(":") {
+            // Command search - no debounce needed
             filteredCommands = commandManager.filterCommands(with: searchText)
             if searchText.lowercased() == ":edit" {
                 if let editCommand = commandManager.commands.first(where: { $0.name == ":edit" }) {
@@ -166,26 +180,34 @@ extension SpotlightViewController: NSTextFieldDelegate {
                 }
             }
             resultsTableView.reloadData()
-            if !filteredCommands.isEmpty && previousCount != filteredCommands.count {
+            windowController?.updateWindowHeight(for: filteredCommands.count)
+            if !filteredCommands.isEmpty {
                 resultsTableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
                 resultsTableView.scrollRowToVisible(0)
             }
         } else if !searchText.isEmpty {
-            commandManager.searchFiles(query: searchText) { [weak self] results in
+            // File search - debounce to prevent excessive searches
+            searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: false) { [weak self] _ in
                 guard let self = self else { return }
-                guard textField.stringValue == searchText else { return }
 
-                self.filteredCommands = results
-                self.resultsTableView.reloadData()
-                if !results.isEmpty && previousCount != results.count {
-                    self.resultsTableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
-                    self.resultsTableView.scrollRowToVisible(0)
+                self.commandManager.searchFiles(query: searchText) { [weak self] results in
+                    guard let self = self else { return }
+                    // Double-check the search text hasn't changed
+                    guard textField.stringValue == searchText else { return }
+
+                    self.filteredCommands = results
+                    self.resultsTableView.reloadData()
+                    self.windowController?.updateWindowHeight(for: results.count)
+                    if !results.isEmpty {
+                        self.resultsTableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
+                        self.resultsTableView.scrollRowToVisible(0)
+                    }
                 }
             }
         } else {
             filteredCommands = []
             resultsTableView.reloadData()
-            windowController?.hidePanel()
+            windowController?.updateWindowHeight(for: 0)
         }
     }
     
@@ -212,7 +234,7 @@ extension SpotlightViewController: NSTextFieldDelegate {
             return true
             
         case #selector(NSResponder.cancelOperation(_:)):
-            NSApplication.shared.terminate(nil)
+            windowController?.hidePanel()
             return true
             
         default:
