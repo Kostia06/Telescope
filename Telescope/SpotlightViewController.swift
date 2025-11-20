@@ -148,13 +148,7 @@ class SpotlightViewController: NSViewController {
         let rowToExecute = (selectedRow >= 0 && selectedRow < filteredCommands.count) ? selectedRow : 0
         let command = filteredCommands[rowToExecute]
 
-        if command.name == ":edit" {
-            if let filePath = filteredCommands.first(where: { $0.name != ":edit" })?.description {
-                commandManager.openInNeovim(filePath: filePath)
-            }
-        } else {
-            command.action()
-        }
+        command.action()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             self?.windowController?.hidePanel()

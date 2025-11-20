@@ -6,5 +6,9 @@
 	<array>
 		<dict/>
 	</array>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Telescope needs to control other applications to execute menu commands and keyboard shortcuts.</string>
+	<key>NSSystemAdministrationUsageDescription</key>
+	<string>Telescope needs accessibility access to read menu items from other applications.</string>
 </dict>
 </plist>

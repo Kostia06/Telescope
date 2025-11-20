@@ -7,13 +7,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var windowController: SpotlightWindowController!
     var commandManager: CommandManager!
     var drawingModeController: DrawingModeController!
-    var soundModeController: SoundModeController!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         drawingModeController = DrawingModeController()
-        soundModeController = SoundModeController()
-        commandManager = CommandManager(drawingModeController: drawingModeController, soundModeController: soundModeController)
+        commandManager = CommandManager(drawingModeController: drawingModeController)
         windowController = SpotlightWindowController(commandManager: commandManager)
         registerHotKey()
     }

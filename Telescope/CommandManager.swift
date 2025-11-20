@@ -6,7 +6,6 @@ class CommandManager {
     private var appSearchQueue = DispatchQueue(label: "com.telescope.appsearch", qos: .userInitiated)
     private let homeDirectory = FileManager.default.homeDirectoryForCurrentUser.path
     private weak var drawingModeController: DrawingModeController?
-    private weak var soundModeController: SoundModeController?
 
     // Search cancellation tracking
     private var currentSearchID: Int = 0
@@ -15,9 +14,8 @@ class CommandManager {
     // Fuse instance for fuzzy matching (thread-safe as serial queue)
     private let fuse: Fuse
 
-    init(drawingModeController: DrawingModeController? = nil, soundModeController: SoundModeController? = nil) {
+    init(drawingModeController: DrawingModeController? = nil) {
         self.drawingModeController = drawingModeController
-        self.soundModeController = soundModeController
 
         // Configure Fuse for optimal fuzzy searching
         self.fuse = Fuse(
@@ -178,65 +176,14 @@ class CommandManager {
 
     private func setupCommands() {
         commands = [
-            Command(name: ":yabai focus-left", description: "Focus window to the left", icon: "arrow.left.square") {
-                self.executeYabaiCommand(["-m", "window", "--focus", "west"])
+            Command(name: ":screenshot", description: "Take a screenshot", icon: "camera") {
+                self.takeScreenshot()
             },
-            Command(name: ":yabai focus-right", description: "Focus window to the right", icon: "arrow.right.square") {
-                self.executeYabaiCommand(["-m", "window", "--focus", "east"])
-            },
-            Command(name: ":yabai focus-up", description: "Focus window above", icon: "arrow.up.square") {
-                self.executeYabaiCommand(["-m", "window", "--focus", "north"])
-            },
-            Command(name: ":yabai focus-down", description: "Focus window below", icon: "arrow.down.square") {
-                self.executeYabaiCommand(["-m", "window", "--focus", "south"])
-            },
-            Command(name: ":yabai move-left", description: "Move window to the left", icon: "arrow.left.circle") {
-                self.executeYabaiCommand(["-m", "window", "--swap", "west"])
-            },
-            Command(name: ":yabai move-right", description: "Move window to the right", icon: "arrow.right.circle") {
-                self.executeYabaiCommand(["-m", "window", "--swap", "east"])
-            },
-            Command(name: ":yabai move-up", description: "Move window up", icon: "arrow.up.circle") {
-                self.executeYabaiCommand(["-m", "window", "--swap", "north"])
-            },
-            Command(name: ":yabai move-down", description: "Move window down", icon: "arrow.down.circle") {
-                self.executeYabaiCommand(["-m", "window", "--swap", "south"])
-            },
-            Command(name: ":yabai toggle-float", description: "Toggle floating window", icon: "rectangle.3.group") {
-                self.executeYabaiCommand(["-m", "window", "--toggle", "float"])
-            },
-            Command(name: ":yabai fullscreen", description: "Toggle fullscreen mode", icon: "arrow.up.left.and.arrow.down.right") {
-                self.executeYabaiCommand(["-m", "window", "--toggle", "zoom-fullscreen"])
-            },
-            Command(name: ":yabai toggle-split", description: "Toggle split direction", icon: "rectangle.split.2x1") {
-                self.executeYabaiCommand(["-m", "window", "--toggle", "split"])
-            },
-            Command(name: ":yabai rotate", description: "Rotate windows 90° clockwise", icon: "arrow.clockwise") {
-                self.executeYabaiCommand(["-m", "space", "--rotate", "90"])
-            },
-            Command(name: ":yabai balance", description: "Balance window sizes", icon: "rectangle.grid.2x2") {
-                self.executeYabaiCommand(["-m", "space", "--balance"])
-            },
-            Command(name: ":yabai next-space", description: "Focus next space", icon: "arrow.forward") {
-                self.executeYabaiCommand(["-m", "space", "--focus", "next"])
-            },
-            Command(name: ":yabai prev-space", description: "Focus previous space", icon: "arrow.backward") {
-                self.executeYabaiCommand(["-m", "space", "--focus", "prev"])
-            },
-            Command(name: ":yabai restart", description: "Restart Yabai service", icon: "arrow.triangle.2.circlepath") {
-                self.executeYabaiCommand(["--restart-service"])
-            },
-            Command(name: ":term", description: "Launch Terminal app", icon: "terminal") {
-                NSWorkspace.shared.launchApplication("WezTerm")
-            },
-            Command(name: ":edit", description: "Open selected file in Neovim", icon: "pencil") {
-                // This action is handled in SpotlightViewController
+            Command(name: ":record", description: "Record screen", icon: "video.fill") {
+                self.startScreenRecording()
             },
             Command(name: ":draw", description: "Enter drawing mode", icon: "pencil.tip.crop.circle") {
                 self.drawingModeController?.toggleDrawingMode()
-            },
-            Command(name: ":sound", description: "Control app volumes", icon: "speaker.wave.3") {
-                self.soundModeController?.toggleSoundMode()
             },
             Command(name: ":q", description: "Quit Telescope", icon: "power") {
                 NSApplication.shared.terminate(nil)
@@ -244,38 +191,38 @@ class CommandManager {
         ]
     }
 
-    func openInNeovim(filePath: String) {
-        let script = """
-        tell application "WezTerm"
-            create window with default profile
-            tell current session of current window
-                write text "nvim '\(filePath)'"
-            end tell
-        end tell
-        """
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-            if let error = error {
-                print("Error executing AppleScript: \(error)")
-            }
-        }
-    }
-    
-    private func executeYabaiCommand(_ arguments: [String]) {
+    private func takeScreenshot() {
         let task = Process()
-        task.launchPath = "/usr/local/bin/yabai"
-        task.arguments = arguments
+        task.launchPath = "/usr/sbin/screencapture"
 
-        // Try alternate path if not found
-        if !FileManager.default.fileExists(atPath: "/usr/local/bin/yabai") {
-            task.launchPath = "/opt/homebrew/bin/yabai"
-        }
+        // Generate timestamp for filename
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let timestamp = formatter.string(from: Date())
+        let filename = "Screenshot_\(timestamp).png"
+
+        // Get Downloads folder path
+        let downloadsURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+        let screenshotPath = downloadsURL.appendingPathComponent(filename).path
+
+        task.arguments = ["-i", "-x", screenshotPath]
 
         do {
             try task.run()
         } catch {
-            print("Error executing yabai command: \(error)")
+            print("Error taking screenshot: \(error)")
+        }
+    }
+
+    private func startScreenRecording() {
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = ["-a", "Screenshot"]
+
+        do {
+            try task.run()
+        } catch {
+            print("Error starting screen recording: \(error)")
         }
     }
     
@@ -287,31 +234,10 @@ class CommandManager {
         if searchText.hasPrefix(":") {
             let commandSearch = searchText.lowercased()
             return commands.filter {
-                $0.name.lowercased().contains(commandSearch) && $0.name != ":edit"
+                $0.name.lowercased().contains(commandSearch)
             }
         }
 
         return []
-    }
-
-    private func promptForFileName(completion: @escaping (String) -> Void) {
-        DispatchQueue.main.async {
-            let alert = NSAlert()
-            alert.messageText = "Enter name"
-            alert.informativeText = "Please enter the file/directory name:"
-            alert.alertStyle = .informational
-
-            let textField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-            textField.placeholderString = "filename"
-            alert.accessoryView = textField
-
-            alert.addButton(withTitle: "Create")
-            alert.addButton(withTitle: "Cancel")
-
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                completion(textField.stringValue)
-            }
-        }
     }
 }
