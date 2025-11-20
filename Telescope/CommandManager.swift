@@ -1,5 +1,6 @@
 import Cocoa
 import Fuse
+// ClipboardManager is part of the same target and will be available
 
 class CommandManager {
     private(set) var commands: [Command] = []
@@ -185,6 +186,12 @@ class CommandManager {
             Command(name: ":draw", description: "Enter drawing mode", icon: "pencil.tip.crop.circle") {
                 self.drawingModeController?.toggleDrawingMode()
             },
+            Command(name: ":clip", description: "Clipboard history", icon: "clipboard.fill") {
+                // This is a placeholder; actual history is shown in filterCommands
+            },
+            Command(name: ":build", description: "Build and deploy app", icon: "hammer.fill") {
+                self.buildAndDeploy()
+            },
             Command(name: ":q", description: "Quit Telescope", icon: "power") {
                 NSApplication.shared.terminate(nil)
             }
@@ -225,6 +232,46 @@ class CommandManager {
             print("Error starting screen recording: \(error)")
         }
     }
+
+    private func buildAndDeploy() {
+        appSearchQueue.async {
+            let buildTask = Process()
+            buildTask.launchPath = "/usr/bin/xcodebuild"
+
+            let projectPath = "/Users/kostiailn/Documents/PROJECTS/Telescope"
+            let buildPath = "\(self.homeDirectory)/Documents/Projects/Telescope/build"
+
+            buildTask.arguments = [
+                "-scheme", "Telescope",
+                "-configuration", "Release",
+                "-derivedDataPath", buildPath
+            ]
+
+            buildTask.currentDirectoryPath = projectPath
+
+            let pipe = Pipe()
+            buildTask.standardOutput = pipe
+            buildTask.standardError = pipe
+
+            do {
+                try buildTask.run()
+                buildTask.waitUntilExit()
+
+                let status = buildTask.terminationStatus
+                DispatchQueue.main.async {
+                    if status == 0 {
+                        print("✓ Build succeeded")
+                    } else {
+                        print("✗ Build failed with status: \(status)")
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    print("Error building app: \(error)")
+                }
+            }
+        }
+    }
     
     func filterCommands(with searchText: String) -> [Command] {
         if searchText.isEmpty {
@@ -233,11 +280,55 @@ class CommandManager {
 
         if searchText.hasPrefix(":") {
             let commandSearch = searchText.lowercased()
+            print("DEBUG: filterCommands called with: \(searchText)")
+
+            // Special handling for clipboard history
+            if commandSearch == ":clip" || commandSearch == ":c" {
+                print("DEBUG: Filtering for clip command")
+                let historyItems = ClipboardManager.shared.getHistory()
+                print("DEBUG: Clipboard history has \(historyItems.count) items")
+                for (index, item) in historyItems.enumerated() {
+                    print("DEBUG:   [\(index)]: \(item.shortContent)")
+                }
+
+                let results = historyItems.enumerated().map { (index, item) in
+                    Command(
+                        name: "[\(index + 1)] \(item.shortContent)",
+                        description: formatDate(item.timestamp),
+                        icon: "doc.on.doc",
+                        type: .command
+                    ) {
+                        print("DEBUG: Pasting item \(index + 1): \(item.shortContent)")
+                        ClipboardManager.shared.paste(item: item)
+                    }
+                }
+
+                print("DEBUG: Returning \(results.count) clipboard items")
+                return results
+            }
+
             return commands.filter {
                 $0.name.lowercased().contains(commandSearch)
             }
         }
 
         return []
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let now = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.second, .minute, .hour, .day], from: date, to: now)
+
+        if let seconds = components.second, seconds < 60 {
+            return "just now"
+        } else if let minutes = components.minute, minutes < 60 {
+            return "\(minutes)m ago"
+        } else if let hours = components.hour, hours < 24 {
+            return "\(hours)h ago"
+        } else if let days = components.day {
+            return "\(days)d ago"
+        }
+        return "earlier"
     }
 }

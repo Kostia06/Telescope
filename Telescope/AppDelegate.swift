@@ -10,6 +10,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+
+        // Initialize clipboard manager first
+        _ = ClipboardManager.shared
+        print("DEBUG: ClipboardManager initialized")
+
         drawingModeController = DrawingModeController()
         commandManager = CommandManager(drawingModeController: drawingModeController)
         windowController = SpotlightWindowController(commandManager: commandManager)
@@ -26,5 +31,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // Prevent Command+Q from quitting the app
         return .terminateCancel
+        
     }
 }
