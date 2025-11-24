@@ -1,5 +1,6 @@
 import Cocoa
 import Fuse
+import UserNotifications
 // ClipboardManager is part of the same target and will be available
 
 class CommandManager {
@@ -26,6 +27,16 @@ class CommandManager {
         )
 
         setupCommands()
+        requestNotificationPermissions()
+    }
+
+    private func requestNotificationPermissions() {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error = error {
+                print("Error requesting notification permissions: \(error)")
+            }
+        }
     }
 
     func searchFiles(query: String, completion: @escaping ([Command]) -> Void) {
@@ -143,9 +154,17 @@ class CommandManager {
                     let matchResult = fuzzyMatch(query, appName)
 
                     if matchResult.matches {
+                        // Get usage points and add bonus to score
+                        let usagePoints = UsageTracker.shared.getUsagePoints(for: appURL.path)
+
+                        // Each usage adds 10,000 points (configurable weight)
+                        // This ensures frequently used apps rank higher
+                        let usageBonus = usagePoints * 10000
+                        let totalScore = matchResult.score + usageBonus
+
                         scoredAppResults.append((
                             command: Command.appCommand(path: appURL.path, name: appName),
-                            score: matchResult.score
+                            score: totalScore
                         ))
                     }
                 }
@@ -192,6 +211,9 @@ class CommandManager {
             Command(name: ":build", description: "Build and deploy app", icon: "hammer.fill") {
                 self.buildAndDeploy()
             },
+            Command(name: ":version", description: "Show Telescope version", icon: "info.circle") {
+                self.showVersion()
+            },
             Command(name: ":q", description: "Quit Telescope", icon: "power") {
                 NSApplication.shared.terminate(nil)
             }
@@ -202,22 +224,41 @@ class CommandManager {
         let task = Process()
         task.launchPath = "/usr/sbin/screencapture"
 
-        // Generate timestamp for filename
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-        let timestamp = formatter.string(from: Date())
-        let filename = "Screenshot_\(timestamp).png"
+        // Copy to clipboard with interactive selection
+        task.arguments = ["-i", "-c"]
 
-        // Get Downloads folder path
-        let downloadsURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
-        let screenshotPath = downloadsURL.appendingPathComponent(filename).path
-
-        task.arguments = ["-i", "-x", screenshotPath]
+        task.terminationHandler = { [weak self] process in
+            if process.terminationStatus == 0 {
+                // Screenshot was taken successfully, show notification
+                DispatchQueue.main.async {
+                    self?.showNotification(title: "Screenshot Copied", body: "Screenshot has been copied to clipboard")
+                }
+            }
+        }
 
         do {
             try task.run()
         } catch {
             print("Error taking screenshot: \(error)")
+        }
+    }
+
+    private func showNotification(title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error showing notification: \(error)")
+            }
         }
     }
 
@@ -272,7 +313,21 @@ class CommandManager {
             }
         }
     }
-    
+
+    private func showVersion() {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "Telescope"
+            alert.informativeText = "Version \(version) (Build \(build))"
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+
     func filterCommands(with searchText: String) -> [Command] {
         if searchText.isEmpty {
             return []

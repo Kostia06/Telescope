@@ -78,6 +78,8 @@ struct Command {
             customIcon: appIcon,
             type: .app(path: path)
         ) {
+            // Track usage before launching
+            UsageTracker.shared.incrementUsage(for: path)
             NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
         }
     }

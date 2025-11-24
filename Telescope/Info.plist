@@ -2,10 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.telescope.app</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict/>
 	</array>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Telescope needs to control other applications to execute menu commands and keyboard shortcuts.</string>
 	<key>NSSystemAdministrationUsageDescription</key>
