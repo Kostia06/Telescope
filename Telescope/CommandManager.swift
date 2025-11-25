@@ -8,6 +8,7 @@ class CommandManager {
     private var appSearchQueue = DispatchQueue(label: "com.telescope.appsearch", qos: .userInitiated)
     private let homeDirectory = FileManager.default.homeDirectoryForCurrentUser.path
     private weak var drawingModeController: DrawingModeController?
+    private var notesWindowController: NotesWindowController?
 
     // Search cancellation tracking
     private var currentSearchID: Int = 0
@@ -25,6 +26,9 @@ class CommandManager {
             distance: 100,         // Search distance
             threshold: 0.4         // Lower = stricter matching (0.0-1.0)
         )
+
+        // Initialize notes window
+        self.notesWindowController = NotesWindowController()
 
         setupCommands()
         requestNotificationPermissions()
@@ -208,6 +212,12 @@ class CommandManager {
             Command(name: ":clip", description: "Clipboard history", icon: "clipboard.fill") {
                 // This is a placeholder; actual history is shown in filterCommands
             },
+            Command(name: ":note", description: "Open notes", icon: "note.text") {
+                self.openNotes()
+            },
+            Command(name: ":notes", description: "Open notes", icon: "note.text") {
+                self.openNotes()
+            },
             Command(name: ":build", description: "Build and deploy app", icon: "hammer.fill") {
                 self.buildAndDeploy()
             },
@@ -325,6 +335,19 @@ class CommandManager {
             alert.alertStyle = .informational
             alert.addButton(withTitle: "OK")
             alert.runModal()
+        }
+    }
+
+    private func openNotes() {
+        DispatchQueue.main.async {
+            self.notesWindowController?.showWindow()
+        }
+    }
+
+    private func viewNote(note: Note) {
+        DispatchQueue.main.async {
+            self.notesWindowController?.showWindow()
+            self.notesWindowController?.selectNote(id: note.id)
         }
     }
 
