@@ -7,6 +7,9 @@ class NotesViewController: NSViewController {
     private var contentTextView: NSTextView!
     private var deleteButton: NSButton!
     private var newNoteButton: NSButton!
+    private var toggleNavbarButton: NSButton!
+    private var leftContainer: NSView!
+    private var isNavbarCollapsed = false
 
     private var notes: [Note] = []
     private var selectedNote: Note?
@@ -16,6 +19,15 @@ class NotesViewController: NSViewController {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 900, height: 600))
         setupUI()
         refreshNotes()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        // Check for Cmd+B to toggle sidebar
+        if event.modifierFlags.contains(.command) && event.characters?.lowercased() == "b" {
+            toggleNavbar()
+            return
+        }
+        super.keyDown(with: event)
     }
 
     private func setupUI() {
@@ -37,10 +49,10 @@ class NotesViewController: NSViewController {
         mainEffectView.addSubview(splitView)
 
         // Left side - Notes list with glass effect
-        let leftContainer = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 280, height: view.bounds.height))
-        leftContainer.material = .underWindowBackground
-        leftContainer.blendingMode = .withinWindow
-        leftContainer.state = .active
+        leftContainer = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 280, height: view.bounds.height))
+        (leftContainer as! NSVisualEffectView).material = .underWindowBackground
+        (leftContainer as! NSVisualEffectView).blendingMode = .withinWindow
+        (leftContainer as! NSVisualEffectView).state = .active
         setupLeftSide(leftContainer)
         splitView.addArrangedSubview(leftContainer)
 
@@ -131,8 +143,8 @@ class NotesViewController: NSViewController {
         toolbar.wantsLayer = true
         container.addSubview(toolbar)
 
-        // Delete button with modern styling
-        deleteButton = NSButton(frame: NSRect(x: container.bounds.width - 58, y: 20, width: 38, height: 38))
+        // Delete button with modern styling (positioned rightmost)
+        deleteButton = NSButton(frame: NSRect(x: 0, y: 20, width: 38, height: 38))
         deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete Note")
         deleteButton.bezelStyle = .texturedRounded
         deleteButton.isBordered = true
@@ -142,6 +154,24 @@ class NotesViewController: NSViewController {
         deleteButton.isEnabled = false
         deleteButton.toolTip = "Delete Note"
         toolbar.addSubview(deleteButton)
+
+        // Toggle navbar button with modern styling (positioned to the left of delete)
+        toggleNavbarButton = NSButton(frame: NSRect(x: 0, y: 20, width: 38, height: 38))
+        toggleNavbarButton.image = NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: "Toggle Sidebar")
+        toggleNavbarButton.bezelStyle = .rounded
+        toggleNavbarButton.isBordered = false
+        toggleNavbarButton.target = self
+        toggleNavbarButton.action = #selector(toggleNavbar)
+        toggleNavbarButton.autoresizingMask = [.minXMargin]
+        toggleNavbarButton.toolTip = "Toggle Sidebar (Cmd+B)"
+        toggleNavbarButton.wantsLayer = true
+        toggleNavbarButton.layer?.backgroundColor = NSColor(white: 0.5, alpha: 0.2).cgColor
+        toggleNavbarButton.layer?.cornerRadius = 6
+        toolbar.addSubview(toggleNavbarButton)
+
+        // Adjust frames after adding to ensure proper positioning
+        deleteButton.frame = NSRect(x: container.bounds.width - 58, y: 20, width: 38, height: 38)
+        toggleNavbarButton.frame = NSRect(x: container.bounds.width - 106, y: 20, width: 38, height: 38)
 
         // Clean separator line - full width
         let separator = NSBox(frame: NSRect(x: 0, y: toolbar.frame.minY, width: container.bounds.width, height: 1))
@@ -315,6 +345,25 @@ class NotesViewController: NSViewController {
 
         isEditingNewNote = false
         refreshNotes()
+    }
+
+    @objc private func toggleNavbar() {
+        isNavbarCollapsed = !isNavbarCollapsed
+
+        let minSize: CGFloat = 60
+        let maxSize: CGFloat = 280
+        let newSize = isNavbarCollapsed ? minSize : maxSize
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            splitView.animator().setPosition(newSize, ofDividerAt: 0)
+        }
+
+        // Update button appearance
+        let imageName = isNavbarCollapsed ? "sidebar.leading" : "sidebar.left"
+        toggleNavbarButton.image = NSImage(systemSymbolName: imageName, accessibilityDescription: nil)
+        toggleNavbarButton.toolTip = isNavbarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"
     }
 }
 

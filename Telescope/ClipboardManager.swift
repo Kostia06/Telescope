@@ -74,6 +74,11 @@ class ClipboardManager {
         pasteboard.setString(item.content, forType: .string)
     }
 
+    func removeItem(_ item: ClipboardItem) {
+        history.removeAll { $0.content == item.content && $0.timestamp == item.timestamp }
+        saveHistory()
+    }
+
     func clearHistory() {
         history.removeAll()
         saveHistory()

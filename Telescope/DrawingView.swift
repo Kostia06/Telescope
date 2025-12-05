@@ -1,6 +1,6 @@
 import Cocoa
 
-enum DrawingShape {
+enum DrawingShape: String {
     case freehand
     case line
     case rectangle
@@ -56,6 +56,7 @@ class DrawingView: NSView {
     var currentShape: DrawingShape = .select
     var currentColor: DrawingColor = .red
     var lineWidth: CGFloat = 3.0
+    var fontSize: CGFloat = 18.0
     var eraserMode: EraserMode = .normal
     private var eraserRadius: CGFloat = 20.0
     private var highlightedPathIndex: Int?
@@ -63,6 +64,7 @@ class DrawingView: NSView {
     private var dragOffsets: [Int: NSPoint] = [:]
     private var selectionRectStart: NSPoint?
     private var selectionRectEnd: NSPoint?
+    private var clearedPathsBackup: [DrawingPath]? = nil  // For undo clear
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -88,6 +90,9 @@ class DrawingView: NSView {
 
         // Add toolbar
         setupToolbar()
+
+        // Load saved drawings
+        loadDrawings()
     }
 
     override var acceptsFirstResponder: Bool {
@@ -137,10 +142,10 @@ class DrawingView: NSView {
     }
 
     private func setupToolbar() {
-        let toolbarHeight: CGFloat = 88
-        let toolbarWidth: CGFloat = 1200
+        let toolbarHeight: CGFloat = 52
+        let toolbarWidth: CGFloat = 760
         let toolbarX = (bounds.width - toolbarWidth) / 2
-        let toolbarY = bounds.height - toolbarHeight - 24
+        let toolbarY = bounds.height - toolbarHeight - 20
 
         toolbarView = DrawingToolbarView(frame: NSRect(x: toolbarX, y: toolbarY, width: toolbarWidth, height: toolbarHeight))
         toolbarView?.delegate = self
@@ -215,11 +220,13 @@ class DrawingView: NSView {
                 if let pathIndex = findPathAtPoint(location) {
                     paths.remove(at: pathIndex)
                     needsDisplay = true
+                    saveDrawings()
                 }
             } else {
                 // Normal mode: start erasing
                 erasePathsNearPoint(location)
                 needsDisplay = true
+                saveDrawings()
             }
             return
         case .text:
@@ -245,15 +252,20 @@ class DrawingView: NSView {
     }
 
     private func showTextInput(at location: NSPoint) {
-        let textField = NSTextField(frame: NSRect(x: location.x, y: location.y - 20, width: 200, height: 40))
-        textField.font = NSFont.systemFont(ofSize: 18)
+        // Create completely invisible text field - no border, no background, no bezel
+        let textField = NSTextField(frame: NSRect(x: location.x, y: location.y, width: 300, height: fontSize + 4))
+        textField.font = NSFont.systemFont(ofSize: fontSize, weight: .medium)
         textField.textColor = currentColor.nsColor
-        textField.backgroundColor = NSColor.white.withAlphaComponent(0.9)
-        textField.isBordered = true
+        textField.backgroundColor = .clear
+        textField.drawsBackground = false
+        textField.isBordered = false
+        textField.isBezeled = false
         textField.focusRingType = .none
-        textField.placeholderString = "Type text..."
+        textField.placeholderString = ""
         textField.target = self
         textField.action = #selector(textInputCompleted(_:))
+        textField.wantsLayer = true
+        textField.layer?.backgroundColor = NSColor.clear.cgColor
 
         addSubview(textField)
         window?.makeFirstResponder(textField)
@@ -268,19 +280,27 @@ class DrawingView: NSView {
             return
         }
 
+        // Get the text field position directly
         let textPath = DrawingPath(
-            points: [NSPoint(x: sender.frame.origin.x, y: sender.frame.origin.y + 20)],
+            points: [NSPoint(x: sender.frame.origin.x, y: sender.frame.origin.y)],
             color: currentColor.nsColor,
             lineWidth: lineWidth,
             shape: .text,
-            text: sender.stringValue
+            text: sender.stringValue,
+            fontSize: fontSize
         )
         paths.append(textPath)
 
         sender.removeFromSuperview()
         textInputField = nil
         window?.makeFirstResponder(self)
+
+        // Auto-switch to select mode after creating text
+        currentShape = .select
+        toolbarView?.selectShapeButton(for: .select)
+
         needsDisplay = true
+        saveDrawings() // Save after adding text
     }
     
     override func mouseDragged(with event: NSEvent) {
@@ -310,6 +330,7 @@ class DrawingView: NSView {
         case .eraser:
             if eraserMode == .normal {
                 erasePathsNearPoint(location)
+                // Note: Will save in mouseUp
             }
         case .freehand:
             currentPath?.points.append(location)
@@ -364,8 +385,22 @@ class DrawingView: NSView {
             return
         }
 
-        // Skip for eraser and select modes
-        if currentShape == .eraser || currentShape == .select {
+        // Handle moving selected paths
+        if currentShape == .select && !selectedPathIndices.isEmpty && !dragOffsets.isEmpty {
+            saveDrawings() // Save after moving paths
+        }
+
+        // Handle eraser mode save
+        if currentShape == .eraser {
+            isDrawing = false
+            if eraserMode == .normal {
+                saveDrawings() // Save after dragging eraser
+            }
+            return
+        }
+
+        // Skip for select mode
+        if currentShape == .select {
             isDrawing = false
             return
         }
@@ -380,6 +415,7 @@ class DrawingView: NSView {
         startPoint = nil
         isDrawing = false
         needsDisplay = true
+        saveDrawings() // Save after completing a path
     }
     
     override func draw(_ dirtyRect: NSRect) {
@@ -436,9 +472,10 @@ class DrawingView: NSView {
     
     private func drawPath(_ path: DrawingPath) {
         if path.shape == .text, let text = path.text, path.points.count >= 1 {
+            let textSize = path.fontSize ?? 18.0
             let attributes: [NSAttributedString.Key: Any] = [
                 .foregroundColor: path.color,
-                .font: NSFont.systemFont(ofSize: 18)
+                .font: NSFont.systemFont(ofSize: textSize, weight: .medium)
             ]
             let attributedString = NSAttributedString(string: text, attributes: attributes)
             attributedString.draw(at: path.points[0])
@@ -559,20 +596,23 @@ class DrawingView: NSView {
     }
 
     private func isPathNearPoint(_ path: DrawingPath, point: NSPoint, threshold: CGFloat) -> Bool {
-        // For text, check bounding box
+        // For text, check bounding box with larger hit area
         if path.shape == .text, let text = path.text, path.points.count >= 1 {
+            let textSize = path.fontSize ?? 18.0
             let attributes: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: 18)
+                .font: NSFont.systemFont(ofSize: textSize, weight: .medium)
             ]
             let attributedString = NSAttributedString(string: text, attributes: attributes)
-            let textSize = attributedString.size()
+            let size = attributedString.size()
             let textRect = NSRect(
                 x: path.points[0].x,
                 y: path.points[0].y,
-                width: textSize.width,
-                height: textSize.height
+                width: size.width,
+                height: size.height
             )
-            return textRect.insetBy(dx: -threshold, dy: -threshold).contains(point)
+            // Expand hit area significantly for easier selection
+            let expandedRect = textRect.insetBy(dx: -threshold * 2, dy: -threshold * 2)
+            return expandedRect.contains(point)
         }
 
         // For freehand paths, check if any point is near
@@ -691,13 +731,86 @@ class DrawingView: NSView {
     }
     
     func clear() {
+        // Backup paths before clearing so we can undo
+        clearedPathsBackup = paths
         paths.removeAll()
         needsDisplay = true
+        saveDrawings()
     }
-    
+
     func undo() {
+        // If paths is empty and we have a backup, restore the cleared paths
+        if paths.isEmpty, let backup = clearedPathsBackup {
+            paths = backup
+            clearedPathsBackup = nil
+            needsDisplay = true
+            saveDrawings()
+            return
+        }
+
         guard !paths.isEmpty else { return }
         paths.removeLast()
+        needsDisplay = true
+        saveDrawings()
+    }
+
+    // MARK: - Persistence
+
+    private func saveDrawings() {
+        let pathData = paths.compactMap { path -> [String: Any]? in
+            var dict: [String: Any] = [:]
+            dict["points"] = path.points.map { ["x": $0.x, "y": $0.y] }
+            dict["color"] = path.color.hexString
+            dict["lineWidth"] = path.lineWidth
+            dict["shape"] = path.shape.rawValue
+            if let text = path.text {
+                dict["text"] = text
+            }
+            if let fontSize = path.fontSize {
+                dict["fontSize"] = fontSize
+            }
+            return dict
+        }
+
+        if let data = try? JSONSerialization.data(withJSONObject: pathData) {
+            UserDefaults.standard.set(data, forKey: "com.telescope.drawings")
+        }
+    }
+
+    private func loadDrawings() {
+        guard let data = UserDefaults.standard.data(forKey: "com.telescope.drawings"),
+              let pathData = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return
+        }
+
+        paths = pathData.compactMap { dict -> DrawingPath? in
+            guard let pointsData = dict["points"] as? [[String: CGFloat]],
+                  let colorHex = dict["color"] as? String,
+                  let lineWidth = dict["lineWidth"] as? CGFloat,
+                  let shapeRaw = dict["shape"] as? String,
+                  let shape = DrawingShape(rawValue: shapeRaw) else {
+                return nil
+            }
+
+            let points = pointsData.compactMap { pointDict -> NSPoint? in
+                guard let x = pointDict["x"], let y = pointDict["y"] else { return nil }
+                return NSPoint(x: x, y: y)
+            }
+
+            let color = NSColor(hexString: colorHex) ?? .black
+            let text = dict["text"] as? String
+            let fontSize = dict["fontSize"] as? CGFloat
+
+            return DrawingPath(
+                points: points,
+                color: color,
+                lineWidth: lineWidth,
+                shape: shape,
+                text: text,
+                fontSize: fontSize
+            )
+        }
+
         needsDisplay = true
     }
 }
@@ -708,13 +821,15 @@ class DrawingPath {
     let lineWidth: CGFloat
     let shape: DrawingShape
     let text: String?
+    let fontSize: CGFloat?
 
-    init(points: [NSPoint], color: NSColor, lineWidth: CGFloat, shape: DrawingShape, text: String? = nil) {
+    init(points: [NSPoint], color: NSColor, lineWidth: CGFloat, shape: DrawingShape, text: String? = nil, fontSize: CGFloat? = nil) {
         self.points = points
         self.color = color
         self.lineWidth = lineWidth
         self.shape = shape
         self.text = text
+        self.fontSize = fontSize
     }
 }
 
@@ -726,6 +841,7 @@ protocol DrawingToolbarDelegate: AnyObject {
     func didTapUndo()
     func didTapExit()
     func didChangeThickness(_ thickness: CGFloat)
+    func didChangeFontSize(_ size: CGFloat)
     func didToggleEraserMode()
 }
 
@@ -757,6 +873,10 @@ extension DrawingView: DrawingToolbarDelegate {
         lineWidth = thickness
     }
 
+    func didChangeFontSize(_ size: CGFloat) {
+        fontSize = size
+    }
+
     func didToggleEraserMode() {
         eraserMode = eraserMode == .normal ? .object : .normal
         highlightedPathIndex = nil
@@ -773,6 +893,11 @@ class DrawingToolbarView: NSView {
     private var selectedColorButton: NSButton?
     private var selectedShapeButton: NSButton?
     private var eraserModeLabel: NSTextField?
+    private var contentView: NSView?
+    private var visualEffectView: NSVisualEffectView?
+    private var foldButton: NSButton?
+    private var isFolded = false
+
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -785,6 +910,7 @@ class DrawingToolbarView: NSView {
 
     private func setupToolbar() {
         wantsLayer = true
+        layer?.masksToBounds = false
 
         // Use visual effect view for proper macOS aesthetic
         let visualEffect = NSVisualEffectView(frame: bounds)
@@ -792,66 +918,42 @@ class DrawingToolbarView: NSView {
         visualEffect.state = .active
         visualEffect.blendingMode = .behindWindow
         visualEffect.wantsLayer = true
-        visualEffect.layer?.cornerRadius = 16
+        visualEffect.layer?.cornerRadius = 12
         visualEffect.layer?.masksToBounds = true
+        visualEffect.layer?.borderWidth = 1
+        visualEffect.layer?.borderColor = NSColor.black.withAlphaComponent(0.2).cgColor
+        visualEffect.autoresizingMask = [.width, .height]
         addSubview(visualEffect)
+        self.visualEffectView = visualEffect
 
-        // Add subtle shadow
-        layer?.shadowColor = NSColor.black.cgColor
-        layer?.shadowOpacity = 0.3
-        layer?.shadowOffset = NSSize(width: 0, height: -2)
-        layer?.shadowRadius = 12
-
-        // Container for all controls with proper spacing
-        let contentView = NSView(frame: NSRect(x: 20, y: 0, width: frame.width - 40, height: frame.height))
+        // Container for all controls
+        let contentView = NSView(frame: NSRect(x: 14, y: 0, width: frame.width - 28, height: frame.height))
         visualEffect.addSubview(contentView)
+        self.contentView = contentView
 
         let yCenter: CGFloat = frame.height / 2
-
-        // Colors section with improved layout
         var xOffset: CGFloat = 0
 
-        let colorsLabel = NSTextField(labelWithString: "Color")
-        colorsLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        colorsLabel.textColor = .secondaryLabelColor
-        colorsLabel.frame = NSRect(x: xOffset, y: yCenter + 22, width: 60, height: 14)
-        colorsLabel.isBordered = false
-        colorsLabel.isEditable = false
-        colorsLabel.backgroundColor = .clear
-        contentView.addSubview(colorsLabel)
-
-        var colorX: CGFloat = xOffset
+        // Colors section
         for color in DrawingColor.allCases {
-            let button = createColorButton(color: color, x: colorX, y: yCenter - 18)
+            let button = createColorButton(color: color, x: xOffset, y: yCenter - 12)
             colorButtons.append(button)
             contentView.addSubview(button)
-            colorX += 38
+            xOffset += 26
 
             if color == .red {
                 selectedColorButton = button
-                button.layer?.borderWidth = 3
+                button.layer?.borderWidth = 2
                 button.layer?.borderColor = NSColor.white.cgColor
             }
         }
 
-        // Vertical separator
-        let separator1 = NSBox(frame: NSRect(x: colorX + 12, y: yCenter - 20, width: 1, height: 40))
-        separator1.boxType = .separator
-        separator1.fillColor = .separatorColor
-        contentView.addSubview(separator1)
+        // Separator
+        xOffset += 6
+        contentView.addSubview(createSeparator(x: xOffset, y: yCenter - 12))
+        xOffset += 10
 
         // Shapes section
-        xOffset = colorX + 32
-
-        let shapesLabel = NSTextField(labelWithString: "Tool")
-        shapesLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        shapesLabel.textColor = .secondaryLabelColor
-        shapesLabel.frame = NSRect(x: xOffset, y: yCenter + 22, width: 60, height: 14)
-        shapesLabel.isBordered = false
-        shapesLabel.isEditable = false
-        shapesLabel.backgroundColor = .clear
-        contentView.addSubview(shapesLabel)
-
         let shapes: [(DrawingShape, String)] = [
             (.select, "cursorarrow.click.2"),
             (.freehand, "scribble"),
@@ -863,130 +965,185 @@ class DrawingToolbarView: NSView {
             (.eraser, "eraser")
         ]
 
-        var shapeX: CGFloat = xOffset
         for (shape, icon) in shapes {
-            let button = createShapeButton(shape: shape, icon: icon, x: shapeX, y: yCenter - 18)
+            let button = createShapeButton(shape: shape, icon: icon, x: xOffset, y: yCenter - 12)
             shapeButtons.append(button)
             contentView.addSubview(button)
-            shapeX += 38
+            xOffset += 28
 
             if shape == .select {
                 selectedShapeButton = button
-                button.layer?.borderWidth = 2.5
+                button.layer?.borderWidth = 1.5
                 button.layer?.borderColor = NSColor.controlAccentColor.cgColor
                 button.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.15).cgColor
             }
         }
 
-        // Eraser mode toggle button (only visible when eraser is selected)
-        let eraserModeButton = createActionButton(icon: "arrow.triangle.2.circlepath", x: shapeX, y: yCenter - 18, action: #selector(eraserModeToggleTapped))
+        // Eraser mode button (hidden by default)
+        let eraserModeButton = createActionButton(icon: "arrow.triangle.2.circlepath", x: xOffset, y: yCenter - 12, action: #selector(eraserModeToggleTapped))
         eraserModeButton.alphaValue = 0
-        eraserModeButton.tag = 999 // Special tag for eraser mode button
+        eraserModeButton.tag = 999
         contentView.addSubview(eraserModeButton)
 
-        // Eraser mode label
-        let modeLabel = NSTextField(labelWithString: "Normal")
-        modeLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        modeLabel.textColor = .secondaryLabelColor
-        modeLabel.frame = NSRect(x: shapeX - 6, y: yCenter - 32, width: 46, height: 12)
-        modeLabel.alignment = .center
-        modeLabel.isBordered = false
-        modeLabel.isEditable = false
-        modeLabel.backgroundColor = .clear
-        modeLabel.alphaValue = 0
-        eraserModeLabel = modeLabel
-        contentView.addSubview(modeLabel)
+        // Separator
+        xOffset += 6
+        contentView.addSubview(createSeparator(x: xOffset, y: yCenter - 12))
+        xOffset += 10
 
-        shapeX += 38
+        // Line thickness slider
+        let lineIcon = NSImageView(frame: NSRect(x: xOffset, y: yCenter - 6, width: 12, height: 12))
+        lineIcon.image = NSImage(systemSymbolName: "lineweight", accessibilityDescription: nil)
+        lineIcon.contentTintColor = .secondaryLabelColor
+        contentView.addSubview(lineIcon)
+        xOffset += 14
 
-        // Vertical separator
-        let separator2 = NSBox(frame: NSRect(x: shapeX + 12, y: yCenter - 20, width: 1, height: 40))
-        separator2.boxType = .separator
-        separator2.fillColor = .separatorColor
-        contentView.addSubview(separator2)
-
-        // Vertical separator
-        let separator3 = NSBox(frame: NSRect(x: shapeX + 12, y: yCenter - 20, width: 1, height: 40))
-        separator3.boxType = .separator
-        separator3.fillColor = .separatorColor
-        contentView.addSubview(separator3)
-
-        // Thickness slider
-        xOffset = shapeX + 32
-
-        let thicknessLabel = NSTextField(labelWithString: "Size")
-        thicknessLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        thicknessLabel.textColor = .secondaryLabelColor
-        thicknessLabel.frame = NSRect(x: xOffset, y: yCenter + 22, width: 60, height: 14)
-        thicknessLabel.isBordered = false
-        thicknessLabel.isEditable = false
-        thicknessLabel.backgroundColor = .clear
-        contentView.addSubview(thicknessLabel)
-
-        let slider = NSSlider(frame: NSRect(x: xOffset, y: yCenter - 10, width: 100, height: 20))
+        let slider = NSSlider(frame: NSRect(x: xOffset, y: yCenter - 8, width: 45, height: 16))
         slider.minValue = 1
         slider.maxValue = 10
         slider.doubleValue = 3
         slider.target = self
         slider.action = #selector(thicknessChanged(_:))
-        slider.isContinuous = true
+        slider.controlSize = .mini
         contentView.addSubview(slider)
+        xOffset += 50
 
-        // Vertical separator
-        xOffset = xOffset + 100 + 20
-        let separator4 = NSBox(frame: NSRect(x: xOffset - 8, y: yCenter - 20, width: 1, height: 40))
-        separator4.boxType = .separator
-        separator4.fillColor = .separatorColor
-        contentView.addSubview(separator4)
+        // Font size slider
+        let textIcon = NSImageView(frame: NSRect(x: xOffset, y: yCenter - 6, width: 12, height: 12))
+        textIcon.image = NSImage(systemSymbolName: "textformat.size", accessibilityDescription: nil)
+        textIcon.contentTintColor = .secondaryLabelColor
+        contentView.addSubview(textIcon)
+        xOffset += 14
 
-        // Action buttons
-        let undoButton = createActionButton(icon: "arrow.uturn.backward", x: xOffset, y: yCenter - 18, action: #selector(undoTapped))
+        let fontSizeSlider = NSSlider(frame: NSRect(x: xOffset, y: yCenter - 8, width: 45, height: 16))
+        fontSizeSlider.minValue = 12
+        fontSizeSlider.maxValue = 48
+        fontSizeSlider.doubleValue = 18
+        fontSizeSlider.target = self
+        fontSizeSlider.action = #selector(fontSizeChanged(_:))
+        fontSizeSlider.controlSize = .mini
+        contentView.addSubview(fontSizeSlider)
+        xOffset += 50
+
+        // Separator
+        contentView.addSubview(createSeparator(x: xOffset, y: yCenter - 12))
+        xOffset += 10
+
+        // Undo button
+        let undoButton = createActionButton(icon: "arrow.uturn.backward", x: xOffset, y: yCenter - 12, action: #selector(undoTapped))
         contentView.addSubview(undoButton)
+        xOffset += 28
 
-        let clearButton = createActionButton(icon: "trash", x: xOffset + 38, y: yCenter - 18, action: #selector(clearTapped))
+        // Clear button
+        let clearButton = createActionButton(icon: "trash", x: xOffset, y: yCenter - 12, action: #selector(clearTapped))
         contentView.addSubview(clearButton)
+        xOffset += 30
 
-        // Exit hint with icon
-        let exitHintX = xOffset + 38 + 38 + 24
+        // ESC badge
+        let escBadge = NSView(frame: NSRect(x: xOffset, y: yCenter - 8, width: 28, height: 16))
+        escBadge.wantsLayer = true
+        escBadge.layer?.cornerRadius = 3
+        escBadge.layer?.backgroundColor = NSColor.tertiaryLabelColor.withAlphaComponent(0.12).cgColor
+        contentView.addSubview(escBadge)
 
-        let escIcon = NSImageView(frame: NSRect(x: exitHintX, y: yCenter - 8, width: 18, height: 18))
-        escIcon.image = NSImage(systemSymbolName: "escape", accessibilityDescription: nil)
-        escIcon.contentTintColor = .tertiaryLabelColor
-        escIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
-        contentView.addSubview(escIcon)
+        let escLabel = NSTextField(labelWithString: "esc")
+        escLabel.font = NSFont.systemFont(ofSize: 9, weight: .medium)
+        escLabel.textColor = .tertiaryLabelColor
+        escLabel.frame = NSRect(x: 0, y: 0, width: 28, height: 14)
+        escLabel.alignment = .center
+        escLabel.isBordered = false
+        escLabel.isEditable = false
+        escLabel.backgroundColor = .clear
+        escBadge.addSubview(escLabel)
 
-        let exitLabel = NSTextField(labelWithString: "to exit")
-        exitLabel.font = NSFont.systemFont(ofSize: 11)
-        exitLabel.textColor = .tertiaryLabelColor
-        exitLabel.frame = NSRect(x: exitHintX + 22, y: yCenter - 7, width: 50, height: 14)
-        exitLabel.isBordered = false
-        exitLabel.isEditable = false
-        exitLabel.backgroundColor = .clear
-        contentView.addSubview(exitLabel)
+        // Fold button (chevron down to hide toolbar)
+        let foldBtn = NSButton(frame: NSRect(x: frame.width - 32, y: (frame.height - 20) / 2, width: 20, height: 20))
+        foldBtn.title = ""
+        foldBtn.wantsLayer = true
+        foldBtn.isBordered = false
+        foldBtn.layer?.cornerRadius = 4
+
+        if let image = NSImage(systemSymbolName: "chevron.down", accessibilityDescription: nil) {
+            let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+            foldBtn.image = image.withSymbolConfiguration(config)
+            foldBtn.contentTintColor = .tertiaryLabelColor
+        }
+
+        foldBtn.target = self
+        foldBtn.action = #selector(foldToggleTapped)
+        visualEffect.addSubview(foldBtn)
+        self.foldButton = foldBtn
+    }
+
+    @objc private func foldToggleTapped() {
+        isFolded.toggle()
+
+        let expandedWidth: CGFloat = 760
+        let expandedHeight: CGFloat = 52
+        let collapsedSize: CGFloat = 40  // Perfect circle
+
+        // Calculate center X position for parent
+        guard let superview = superview else { return }
+        let superWidth = superview.bounds.width
+
+        let targetWidth: CGFloat = isFolded ? collapsedSize : expandedWidth
+        let targetHeight: CGFloat = isFolded ? collapsedSize : expandedHeight
+        let targetX = (superWidth - targetWidth) / 2
+        let targetCornerRadius: CGFloat = isFolded ? collapsedSize / 2 : 12
+
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+            // Animate frame change
+            self.animator().frame = NSRect(x: targetX, y: self.frame.origin.y, width: targetWidth, height: targetHeight)
+
+            // Hide/show content
+            self.contentView?.animator().alphaValue = isFolded ? 0 : 1
+
+            // Update corner radius for circle effect
+            self.visualEffectView?.layer?.cornerRadius = targetCornerRadius
+
+            // Update fold button icon and position
+            if let foldBtn = self.foldButton {
+                let iconName = isFolded ? "chevron.up" : "chevron.down"
+                if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
+                    let config = NSImage.SymbolConfiguration(pointSize: isFolded ? 12 : 10, weight: .semibold)
+                    foldBtn.image = image.withSymbolConfiguration(config)
+                }
+                // Center fold button when collapsed, right-align when expanded
+                if isFolded {
+                    foldBtn.frame = NSRect(x: (collapsedSize - 20) / 2, y: (collapsedSize - 20) / 2, width: 20, height: 20)
+                } else {
+                    foldBtn.frame = NSRect(x: targetWidth - 32, y: (expandedHeight - 20) / 2, width: 20, height: 20)
+                }
+            }
+        })
+    }
+
+    private func createSeparator(x: CGFloat, y: CGFloat) -> NSView {
+        let separator = NSView(frame: NSRect(x: x, y: y, width: 1, height: 24))
+        separator.wantsLayer = true
+        separator.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(0.4).cgColor
+        return separator
     }
 
     @objc private func thicknessChanged(_ sender: NSSlider) {
         delegate?.didChangeThickness(CGFloat(sender.doubleValue))
     }
 
+    @objc private func fontSizeChanged(_ sender: NSSlider) {
+        delegate?.didChangeFontSize(CGFloat(sender.doubleValue))
+    }
+
     private func createColorButton(color: DrawingColor, x: CGFloat, y: CGFloat) -> NSButton {
-        let button = NSButton(frame: NSRect(x: x, y: y, width: 34, height: 34))
+        let button = NSButton(frame: NSRect(x: x, y: y, width: 24, height: 24))
         button.title = ""
         button.wantsLayer = true
         button.isBordered = false
         button.layer?.backgroundColor = color.nsColor.cgColor
-        button.layer?.cornerRadius = 17
-        button.layer?.borderWidth = 2
-        button.layer?.borderColor = NSColor.separatorColor.cgColor
-
-        // Add subtle inner shadow effect
-        let innerShadow = CALayer()
-        innerShadow.frame = button.bounds
-        innerShadow.cornerRadius = 17
-        innerShadow.shadowColor = NSColor.black.cgColor
-        innerShadow.shadowOffset = NSSize(width: 0, height: 1)
-        innerShadow.shadowOpacity = 0.2
-        innerShadow.shadowRadius = 2
+        button.layer?.cornerRadius = 12
+        button.layer?.borderWidth = 1.5
+        button.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.5).cgColor
 
         button.target = self
         button.action = #selector(colorButtonTapped(_:))
@@ -995,18 +1152,18 @@ class DrawingToolbarView: NSView {
     }
 
     private func createShapeButton(shape: DrawingShape, icon: String, x: CGFloat, y: CGFloat) -> NSButton {
-        let button = NSButton(frame: NSRect(x: x, y: y, width: 34, height: 34))
+        let button = NSButton(frame: NSRect(x: x, y: y, width: 24, height: 24))
         button.title = ""
         button.wantsLayer = true
         button.isBordered = false
         button.bezelStyle = .regularSquare
-        button.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        button.layer?.cornerRadius = 8
-        button.layer?.borderWidth = 1.5
-        button.layer?.borderColor = NSColor.separatorColor.cgColor
+        button.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.5).cgColor
+        button.layer?.cornerRadius = 5
+        button.layer?.borderWidth = 1
+        button.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.3).cgColor
 
         if let image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) {
-            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
             button.image = image.withSymbolConfiguration(config)
             button.contentTintColor = .labelColor
         }
@@ -1029,18 +1186,18 @@ class DrawingToolbarView: NSView {
     }
 
     private func createActionButton(icon: String, x: CGFloat, y: CGFloat, action: Selector) -> NSButton {
-        let button = NSButton(frame: NSRect(x: x, y: y, width: 34, height: 34))
+        let button = NSButton(frame: NSRect(x: x, y: y, width: 24, height: 24))
         button.title = ""
         button.wantsLayer = true
         button.isBordered = false
         button.bezelStyle = .regularSquare
-        button.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        button.layer?.cornerRadius = 8
-        button.layer?.borderWidth = 1.5
-        button.layer?.borderColor = NSColor.separatorColor.cgColor
+        button.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.5).cgColor
+        button.layer?.cornerRadius = 5
+        button.layer?.borderWidth = 1
+        button.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.3).cgColor
 
         if let image = NSImage(systemSymbolName: icon, accessibilityDescription: nil) {
-            let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+            let config = NSImage.SymbolConfiguration(pointSize: 11, weight: .medium)
             button.image = image.withSymbolConfiguration(config)
             button.contentTintColor = .secondaryLabelColor
         }
@@ -1052,11 +1209,11 @@ class DrawingToolbarView: NSView {
 
     @objc private func colorButtonTapped(_ sender: NSButton) {
         // Deselect previous
-        selectedColorButton?.layer?.borderWidth = 2
-        selectedColorButton?.layer?.borderColor = NSColor.separatorColor.cgColor
+        selectedColorButton?.layer?.borderWidth = 1.5
+        selectedColorButton?.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.5).cgColor
 
         // Select new
-        sender.layer?.borderWidth = 3
+        sender.layer?.borderWidth = 2.5
         sender.layer?.borderColor = NSColor.white.cgColor
         selectedColorButton = sender
 
@@ -1066,12 +1223,12 @@ class DrawingToolbarView: NSView {
 
     @objc private func shapeButtonTapped(_ sender: NSButton) {
         // Deselect previous
-        selectedShapeButton?.layer?.borderWidth = 1.5
-        selectedShapeButton?.layer?.borderColor = NSColor.separatorColor.cgColor
-        selectedShapeButton?.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        selectedShapeButton?.layer?.borderWidth = 1
+        selectedShapeButton?.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.3).cgColor
+        selectedShapeButton?.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.5).cgColor
 
         // Select new
-        sender.layer?.borderWidth = 2.5
+        sender.layer?.borderWidth = 2
         sender.layer?.borderColor = NSColor.controlAccentColor.cgColor
         sender.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.15).cgColor
         selectedShapeButton = sender
@@ -1082,7 +1239,7 @@ class DrawingToolbarView: NSView {
         // Show/hide eraser mode toggle button and label
         if shape == .eraser {
             // Show eraser mode controls with animation
-            if let eraserModeButton = subviews.first(where: { $0.tag == 999 }) {
+            if let eraserModeButton = contentView?.subviews.first(where: { $0.tag == 999 }) {
                 NSAnimationContext.runAnimationGroup({ context in
                     context.duration = 0.2
                     eraserModeButton.animator().alphaValue = 1
@@ -1091,7 +1248,7 @@ class DrawingToolbarView: NSView {
             }
         } else {
             // Hide eraser mode controls with animation
-            if let eraserModeButton = subviews.first(where: { $0.tag == 999 }) {
+            if let eraserModeButton = contentView?.subviews.first(where: { $0.tag == 999 }) {
                 NSAnimationContext.runAnimationGroup({ context in
                     context.duration = 0.2
                     eraserModeButton.animator().alphaValue = 0
@@ -1122,5 +1279,47 @@ class DrawingToolbarView: NSView {
 
     @objc private func undoTapped() {
         delegate?.didTapUndo()
+    }
+
+    func selectShapeButton(for shape: DrawingShape) {
+        let shapes: [DrawingShape] = [.select, .freehand, .line, .rectangle, .circle, .arrow, .text, .eraser]
+        guard let index = shapes.firstIndex(of: shape), index < shapeButtons.count else { return }
+
+        // Deselect previous
+        selectedShapeButton?.layer?.borderWidth = 1
+        selectedShapeButton?.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.3).cgColor
+        selectedShapeButton?.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.5).cgColor
+
+        // Select new
+        let button = shapeButtons[index]
+        button.layer?.borderWidth = 2
+        button.layer?.borderColor = NSColor.controlAccentColor.cgColor
+        button.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.15).cgColor
+        selectedShapeButton = button
+    }
+}
+
+// MARK: - NSColor Extensions for Persistence
+extension NSColor {
+    var hexString: String {
+        guard let rgbColor = usingColorSpace(.deviceRGB) else { return "#000000" }
+        let r = Int(rgbColor.redComponent * 255.0)
+        let g = Int(rgbColor.greenComponent * 255.0)
+        let b = Int(rgbColor.blueComponent * 255.0)
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
+
+    convenience init?(hexString: String) {
+        let hex = hexString.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        if hex.count == 6 {
+            var rgb: UInt64 = 0
+            Scanner(string: hex).scanHexInt64(&rgb)
+            let r = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+            let g = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+            let b = CGFloat(rgb & 0x0000FF) / 255.0
+            self.init(red: r, green: g, blue: b, alpha: 1.0)
+        } else {
+            return nil
+        }
     }
 }

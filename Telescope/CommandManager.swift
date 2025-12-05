@@ -371,11 +371,12 @@ class CommandManager {
 
                 let results = historyItems.enumerated().map { (index, item) in
                     Command(
-                        name: "[\(index + 1)] \(item.shortContent)",
-                        description: formatDate(item.timestamp),
-                        icon: "doc.on.doc",
-                        type: .command
+                        name: item.shortContent,
+                        description: "⏎ Options  •  \(formatDate(item.timestamp))",
+                        icon: "doc.on.clipboard",
+                        type: .clipboardItem(item: item)
                     ) {
+                        // Default action: paste item
                         print("DEBUG: Pasting item \(index + 1): \(item.shortContent)")
                         ClipboardManager.shared.paste(item: item)
                     }

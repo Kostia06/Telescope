@@ -30,26 +30,20 @@ class SpotlightViewController: NSViewController {
     }
     
     private func setupUI() {
-        // Visual effect background with enhanced styling
+        // Main view setup - clean, no shadow/border
+        view.wantsLayer = true
+        view.layer?.cornerRadius = 16
+        view.layer?.masksToBounds = true
+
+        // Visual effect background
         visualEffectView = NSVisualEffectView(frame: view.bounds)
         visualEffectView.material = .popover
         visualEffectView.state = .active
         visualEffectView.blendingMode = .behindWindow
         visualEffectView.wantsLayer = true
-        visualEffectView.layer?.cornerRadius = 14
+        visualEffectView.layer?.cornerRadius = 16
         visualEffectView.layer?.masksToBounds = true
         visualEffectView.autoresizingMask = [.width, .height]
-
-        // Add subtle border
-        visualEffectView.layer?.borderWidth = 1
-        visualEffectView.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.2).cgColor
-
-        // Add shadow for depth
-        view.wantsLayer = true
-        view.layer?.shadowColor = NSColor.black.cgColor
-        view.layer?.shadowOpacity = 0.5
-        view.layer?.shadowOffset = NSSize(width: 0, height: -4)
-        view.layer?.shadowRadius = 20
 
         view.addSubview(visualEffectView)
 
@@ -148,10 +142,113 @@ class SpotlightViewController: NSViewController {
         let rowToExecute = (selectedRow >= 0 && selectedRow < filteredCommands.count) ? selectedRow : 0
         let command = filteredCommands[rowToExecute]
 
+        // Check if this is a clipboard item - show options menu
+        if case .clipboardItem(let item) = command.type {
+            showClipboardOptionsMenu(for: item, at: rowToExecute)
+            return
+        }
+
         command.action()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             self?.windowController?.hidePanel()
+        }
+    }
+
+    private func showClipboardOptionsMenu(for item: ClipboardItem, at row: Int) {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        // Paste option (simulates Cmd+V after copying)
+        let pasteItem = NSMenuItem(title: "Paste", action: #selector(clipboardPaste(_:)), keyEquivalent: "")
+        pasteItem.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: nil)
+        pasteItem.representedObject = item
+        pasteItem.target = self
+        menu.addItem(pasteItem)
+
+        // Copy to clipboard (just copies, doesn't paste)
+        let copyItem = NSMenuItem(title: "Copy to Clipboard", action: #selector(clipboardCopy(_:)), keyEquivalent: "")
+        copyItem.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: nil)
+        copyItem.representedObject = item
+        copyItem.target = self
+        menu.addItem(copyItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // Preview full content
+        let previewItem = NSMenuItem(title: "Preview Full Content", action: #selector(clipboardPreview(_:)), keyEquivalent: "")
+        previewItem.image = NSImage(systemSymbolName: "eye", accessibilityDescription: nil)
+        previewItem.representedObject = item
+        previewItem.target = self
+        menu.addItem(previewItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // Delete from history
+        let deleteItem = NSMenuItem(title: "Remove from History", action: #selector(clipboardDelete(_:)), keyEquivalent: "")
+        deleteItem.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)
+        deleteItem.representedObject = item
+        deleteItem.target = self
+        menu.addItem(deleteItem)
+
+        // Get the row rect for positioning
+        let rowRect = resultsTableView.rect(ofRow: row)
+        let pointInTable = NSPoint(x: rowRect.midX, y: rowRect.minY)
+        let pointInWindow = resultsTableView.convert(pointInTable, to: nil)
+
+        menu.popUp(positioning: nil, at: pointInWindow, in: view)
+    }
+
+    @objc private func clipboardPaste(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardItem else { return }
+        ClipboardManager.shared.paste(item: item)
+        windowController?.hidePanel()
+
+        // Simulate Cmd+V after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            let source = CGEventSource(stateID: .hidSystemState)
+            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // 'v' key
+            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+            keyDown?.flags = .maskCommand
+            keyUp?.flags = .maskCommand
+            keyDown?.post(tap: .cghidEventTap)
+            keyUp?.post(tap: .cghidEventTap)
+        }
+    }
+
+    @objc private func clipboardCopy(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardItem else { return }
+        ClipboardManager.shared.paste(item: item)
+        windowController?.hidePanel()
+    }
+
+    @objc private func clipboardPreview(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardItem else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Clipboard Content"
+        alert.informativeText = item.content
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Copy")
+        alert.addButton(withTitle: "Close")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            ClipboardManager.shared.paste(item: item)
+        }
+    }
+
+    @objc private func clipboardDelete(_ sender: NSMenuItem) {
+        guard let item = sender.representedObject as? ClipboardItem else { return }
+        ClipboardManager.shared.removeItem(item)
+
+        // Refresh the list
+        filteredCommands = commandManager.filterCommands(with: searchField.stringValue)
+        resultsTableView.reloadData()
+        windowController?.updateWindowHeight(for: filteredCommands.count)
+
+        if !filteredCommands.isEmpty {
+            resultsTableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
         }
     }
 }

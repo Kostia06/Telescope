@@ -50,6 +50,11 @@ class SpotlightWindowController: NSWindowController {
         panel.becomesKeyOnlyIfNeeded = false
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
+
+        // Ensure content view clips to bounds for proper rounded corners
+        panel.contentView?.wantsLayer = true
+        panel.contentView?.layer?.masksToBounds = true
+        panel.contentView?.layer?.cornerRadius = 16
     }
     
     func togglePanel() {

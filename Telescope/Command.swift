@@ -6,6 +6,7 @@ enum SearchResultType {
     case file(path: String)
     case app(path: String)
     case command
+    case clipboardItem(item: ClipboardItem)
 }
 
 struct Command {
