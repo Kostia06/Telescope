@@ -1,0 +1,492 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A01 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11 /* AppDelegate.swift */; };
+		A02 /* SpotlightWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12 /* SpotlightWindowController.swift */; };
+		A03 /* SpotlightViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A13 /* SpotlightViewController.swift */; };
+		A04 /* CommandManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A14 /* CommandManager.swift */; };
+		A05 /* Command.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15 /* Command.swift */; };
+		A06 /* CommandCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A16 /* CommandCellView.swift */; };
+		A07 /* CommandRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17 /* CommandRowView.swift */; };
+		A08 /* DrawingModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A18 /* DrawingModeController.swift */; };
+		A09 /* DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A19 /* DrawingView.swift */; };
+		A10 /* CommandHoldMenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20 /* CommandHoldMenuController.swift */; };
+		A21 /* CommandHoldMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A22 /* CommandHoldMenuView.swift */; };
+		A23 /* ClipboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23CP /* ClipboardManager.swift */; };
+		A24 /* UsageTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24UT /* UsageTracker.swift */; };
+		A25 /* NotesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A25NM /* NotesManager.swift */; };
+		A26 /* NotesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26NW /* NotesWindowController.swift */; };
+		A27 /* NotesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A27NV /* NotesViewController.swift */; };
+		A28 /* NoteListCellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28NC /* NoteListCellView.swift */; };
+		A29 /* SHA256View.swift in Sources */ = {isa = PBXBuildFile; fileRef = A29SV /* SHA256View.swift */; };
+		A30 /* CalcView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30CV /* CalcView.swift */; };
+		A31MV /* MusicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31MV2 /* MusicView.swift */; };
+		A32FT /* FileTrayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32FTV /* FileTrayView.swift */; };
+		A33TV /* TimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A33TVF /* TimerView.swift */; };
+		A34DV /* DefineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A34DVF /* DefineView.swift */; };
+		A35CV /* ColorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A35CVF /* ColorView.swift */; };
+		A36EV /* EmojiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A36EVF /* EmojiView.swift */; };
+		A37SV /* SystemInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A37SVF /* SystemInfoView.swift */; };
+		A38CV /* ConvertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A38CVF /* ConvertView.swift */; };
+		A31 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A41 /* Assets.xcassets */; };
+		A32 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = A43 /* MainMenu.xib */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A00 /* Telescope.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Telescope.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A11 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A12 /* SpotlightWindowController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SpotlightWindowController.swift; sourceTree = "<group>"; };
+		A13 /* SpotlightViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SpotlightViewController.swift; sourceTree = "<group>"; };
+		A14 /* CommandManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommandManager.swift; sourceTree = "<group>"; };
+		A15 /* Command.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Command.swift; sourceTree = "<group>"; };
+		A16 /* CommandCellView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommandCellView.swift; sourceTree = "<group>"; };
+		A17 /* CommandRowView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommandRowView.swift; sourceTree = "<group>"; };
+		A18 /* DrawingModeController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DrawingModeController.swift; sourceTree = "<group>"; };
+		A19 /* DrawingView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DrawingView.swift; sourceTree = "<group>"; };
+		A20 /* CommandHoldMenuController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommandHoldMenuController.swift; sourceTree = "<group>"; };
+		A22 /* CommandHoldMenuView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CommandHoldMenuView.swift; sourceTree = "<group>"; };
+		A23CP /* ClipboardManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ClipboardManager.swift; sourceTree = "<group>"; };
+		A24UT /* UsageTracker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UsageTracker.swift; sourceTree = "<group>"; };
+		A25NM /* NotesManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotesManager.swift; sourceTree = "<group>"; };
+		A26NW /* NotesWindowController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotesWindowController.swift; sourceTree = "<group>"; };
+		A27NV /* NotesViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotesViewController.swift; sourceTree = "<group>"; };
+		A28NC /* NoteListCellView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NoteListCellView.swift; sourceTree = "<group>"; };
+		A29SV /* SHA256View.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SHA256View.swift; sourceTree = "<group>"; };
+		A30CV /* CalcView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CalcView.swift; sourceTree = "<group>"; };
+		A31MV2 /* MusicView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MusicView.swift; sourceTree = "<group>"; };
+		A32FTV /* FileTrayView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FileTrayView.swift; sourceTree = "<group>"; };
+		A33TVF /* TimerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TimerView.swift; sourceTree = "<group>"; };
+		A34DVF /* DefineView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DefineView.swift; sourceTree = "<group>"; };
+		A35CVF /* ColorView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ColorView.swift; sourceTree = "<group>"; };
+		A36EVF /* EmojiView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EmojiView.swift; sourceTree = "<group>"; };
+		A37SVF /* SystemInfoView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SystemInfoView.swift; sourceTree = "<group>"; };
+		A38CVF /* ConvertView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ConvertView.swift; sourceTree = "<group>"; };
+		A41 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A42 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		A51 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		ROOT = {
+			isa = PBXGroup;
+			children = (
+				A50 /* Telescope */,
+				PRODUCTS,
+			);
+			sourceTree = "<group>";
+		};
+		A50 /* Telescope */ = {
+			isa = PBXGroup;
+			children = (
+				A11 /* AppDelegate.swift */,
+				A12 /* SpotlightWindowController.swift */,
+				A13 /* SpotlightViewController.swift */,
+				A14 /* CommandManager.swift */,
+				A15 /* Command.swift */,
+				A16 /* CommandCellView.swift */,
+				A17 /* CommandRowView.swift */,
+				A18 /* DrawingModeController.swift */,
+				A19 /* DrawingView.swift */,
+				A20 /* CommandHoldMenuController.swift */,
+				A22 /* CommandHoldMenuView.swift */,
+				A23CP /* ClipboardManager.swift */,
+				A24UT /* UsageTracker.swift */,
+				A25NM /* NotesManager.swift */,
+				A26NW /* NotesWindowController.swift */,
+				A27NV /* NotesViewController.swift */,
+				A28NC /* NoteListCellView.swift */,
+				A29SV /* SHA256View.swift */,
+				A30CV /* CalcView.swift */,
+				A31MV2 /* MusicView.swift */,
+				A32FTV /* FileTrayView.swift */,
+				A33TVF /* TimerView.swift */,
+				A34DVF /* DefineView.swift */,
+				A35CVF /* ColorView.swift */,
+				A36EVF /* EmojiView.swift */,
+				A37SVF /* SystemInfoView.swift */,
+				A38CVF /* ConvertView.swift */,
+				A41 /* Assets.xcassets */,
+				A43 /* MainMenu.xib */,
+				A51 /* Info.plist */,
+			);
+			path = Telescope;
+			sourceTree = "<group>";
+		};
+		PRODUCTS = {
+			isa = PBXGroup;
+			children = (
+				A00 /* Telescope.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		TARGET /* Telescope */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BC1 /* Build configuration list for PBXNativeTarget "Telescope" */;
+			buildPhases = (
+				SP /* Sources */,
+				FD /* Frameworks */,
+				RP /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Telescope;
+			packageProductDependencies = (
+				PP1 /* HotKey */,
+				PP2 /* Files */,
+				PP3 /* Fuse */,
+			);
+			productName = Telescope;
+			productReference = A00 /* Telescope.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		PROJECT /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = BC2 /* Build configuration list for PBXProject "Telescope" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = ROOT;
+			packageReferences = (
+				PR1 /* XCRemoteSwiftPackageReference "HotKey" */,
+				PR2 /* XCRemoteSwiftPackageReference "Files" */,
+				PR3 /* XCRemoteSwiftPackageReference "Fuse" */,
+			);
+			productRefGroup = PRODUCTS;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				TARGET /* Telescope */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		RP /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A31 /* Assets.xcassets in Resources */,
+				A32 /* MainMenu.xib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		SP /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A01 /* AppDelegate.swift in Sources */,
+				A02 /* SpotlightWindowController.swift in Sources */,
+				A03 /* SpotlightViewController.swift in Sources */,
+				A04 /* CommandManager.swift in Sources */,
+				A05 /* Command.swift in Sources */,
+				A06 /* CommandCellView.swift in Sources */,
+				A07 /* CommandRowView.swift in Sources */,
+				A08 /* DrawingModeController.swift in Sources */,
+				A09 /* DrawingView.swift in Sources */,
+				A10 /* CommandHoldMenuController.swift in Sources */,
+				A21 /* CommandHoldMenuView.swift in Sources */,
+				A23 /* ClipboardManager.swift in Sources */,
+				A24 /* UsageTracker.swift in Sources */,
+				A25 /* NotesManager.swift in Sources */,
+				A26 /* NotesWindowController.swift in Sources */,
+				A27 /* NotesViewController.swift in Sources */,
+				A28 /* NoteListCellView.swift in Sources */,
+				A29 /* SHA256View.swift in Sources */,
+				A30 /* CalcView.swift in Sources */,
+				A31MV /* MusicView.swift in Sources */,
+				A32FT /* FileTrayView.swift in Sources */,
+				A33TV /* TimerView.swift in Sources */,
+				A34DV /* DefineView.swift in Sources */,
+				A35CV /* ColorView.swift in Sources */,
+				A36EV /* EmojiView.swift in Sources */,
+				A37SV /* SystemInfoView.swift in Sources */,
+				A38CV /* ConvertView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		A43 /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A42 /* Base */,
+			);
+			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		DEBUG_PROJECT = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		RELEASE_PROJECT = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		DEBUG_TARGET = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Telescope/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainNibFile = MainMenu;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.telescope.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		RELEASE_TARGET = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Telescope/Info.plist;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainNibFile = MainMenu;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.telescope.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BC1 /* Build configuration list for PBXNativeTarget "Telescope" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DEBUG_TARGET,
+				RELEASE_TARGET,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BC2 /* Build configuration list for PBXProject "Telescope" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DEBUG_PROJECT,
+				RELEASE_PROJECT,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		PR1 /* XCRemoteSwiftPackageReference "HotKey" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/soffes/HotKey.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.0;
+			};
+		};
+		PR2 /* XCRemoteSwiftPackageReference "Files" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/JohnSundell/Files.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.0.0;
+			};
+		};
+		PR3 /* XCRemoteSwiftPackageReference "Fuse" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krisk/fuse-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		PP1 /* HotKey */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PR1 /* XCRemoteSwiftPackageReference "HotKey" */;
+			productName = HotKey;
+		};
+		PP2 /* Files */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PR2 /* XCRemoteSwiftPackageReference "Files" */;
+			productName = Files;
+		};
+		PP3 /* Fuse */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PR3 /* XCRemoteSwiftPackageReference "Fuse" */;
+			productName = Fuse;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = PROJECT /* Project object */;
+}
