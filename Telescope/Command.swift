@@ -72,9 +72,21 @@ struct Command {
         let appIcon = NSWorkspace.shared.icon(forFile: path)
         appIcon.size = NSSize(width: 32, height: 32)
 
+        // Check if app is running
+        let bundleID = Bundle(url: url)?.bundleIdentifier
+        let runningApps = NSWorkspace.shared.runningApplications
+        let isRunning = runningApps.contains { app in
+            if let bundleID = bundleID {
+                return app.bundleIdentifier == bundleID
+            }
+            return app.localizedName == name
+        }
+
+        let description = isRunning ? "Running • ⌘⏎ Force Quit" : "Application"
+
         return Command(
             name: name,
-            description: "Application",
+            description: description,
             icon: "app.fill",
             customIcon: appIcon,
             type: .app(path: path)
@@ -82,6 +94,35 @@ struct Command {
             // Track usage before launching
             UsageTracker.shared.incrementUsage(for: path)
             NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        }
+    }
+
+    static func isAppRunning(path: String, name: String) -> Bool {
+        let url = URL(fileURLWithPath: path)
+        let bundleID = Bundle(url: url)?.bundleIdentifier
+        let runningApps = NSWorkspace.shared.runningApplications
+        return runningApps.contains { app in
+            if let bundleID = bundleID {
+                return app.bundleIdentifier == bundleID
+            }
+            return app.localizedName == name
+        }
+    }
+
+    static func forceQuitApp(path: String, name: String) {
+        let url = URL(fileURLWithPath: path)
+        let bundleID = Bundle(url: url)?.bundleIdentifier
+        let runningApps = NSWorkspace.shared.runningApplications
+
+        for app in runningApps {
+            if let bundleID = bundleID, app.bundleIdentifier == bundleID {
+                app.forceTerminate()
+                return
+            }
+            if app.localizedName == name {
+                app.forceTerminate()
+                return
+            }
         }
     }
 

@@ -3,7 +3,7 @@ import Cocoa
 class ClipboardManager {
     static let shared = ClipboardManager()
 
-    private let maxHistoryItems = 5
+    private let maxHistoryItems = 50
     private var history: [ClipboardItem] = []
     private let defaults = UserDefaults.standard
     private let historyKey = "com.telescope.clipboard.history"

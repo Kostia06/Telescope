@@ -9,6 +9,7 @@ class CommandManager {
     private let homeDirectory = FileManager.default.homeDirectoryForCurrentUser.path
     private weak var drawingModeController: DrawingModeController?
     private var notesWindowController: NotesWindowController?
+    private weak var spotlightViewController: SpotlightViewController?
 
     // Search cancellation tracking
     private var currentSearchID: Int = 0
@@ -32,6 +33,10 @@ class CommandManager {
 
         setupCommands()
         requestNotificationPermissions()
+    }
+
+    func setSpotlightViewController(_ controller: SpotlightViewController) {
+        self.spotlightViewController = controller
     }
 
     private func requestNotificationPermissions() {
@@ -223,6 +228,15 @@ class CommandManager {
             },
             Command(name: ":version", description: "Show Telescope version", icon: "info.circle") {
                 self.showVersion()
+            },
+            Command(name: ":sha-256", description: "Calculate SHA-256 hash", icon: "number") {
+                // UI handled inline by SpotlightViewController
+            },
+            Command(name: ":calc", description: "Math calculator", icon: "function") {
+                // UI handled inline by SpotlightViewController
+            },
+            Command(name: ":music", description: "Now playing controls", icon: "music.note") {
+                // UI handled inline by SpotlightViewController
             },
             Command(name: ":q", description: "Quit Telescope", icon: "power") {
                 NSApplication.shared.terminate(nil)
