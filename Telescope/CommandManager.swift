@@ -238,6 +238,27 @@ class CommandManager {
             Command(name: ":music", description: "Now playing controls", icon: "music.note") {
                 // UI handled inline by SpotlightViewController
             },
+            Command(name: ":timer", description: "Countdown timer", icon: "timer") {
+                // UI handled inline by SpotlightViewController
+            },
+            Command(name: ":define", description: "Dictionary lookup", icon: "book") {
+                // UI handled inline by SpotlightViewController
+            },
+            Command(name: ":color", description: "Color picker & converter", icon: "paintpalette") {
+                // UI handled inline by SpotlightViewController
+            },
+            Command(name: ":emoji", description: "Emoji search", icon: "face.smiling") {
+                // UI handled inline by SpotlightViewController
+            },
+            Command(name: ":sys", description: "System information", icon: "cpu") {
+                // UI handled inline by SpotlightViewController
+            },
+            Command(name: ":convert", description: "Unit converter", icon: "arrow.left.arrow.right") {
+                // UI handled inline by SpotlightViewController
+            },
+            Command(name: ":tray", description: "File tray", icon: "tray") {
+                // UI handled inline by SpotlightViewController
+            },
             Command(name: ":q", description: "Quit Telescope", icon: "power") {
                 NSApplication.shared.terminate(nil)
             }
@@ -372,16 +393,10 @@ class CommandManager {
 
         if searchText.hasPrefix(":") {
             let commandSearch = searchText.lowercased()
-            print("DEBUG: filterCommands called with: \(searchText)")
 
             // Special handling for clipboard history
             if commandSearch == ":clip" || commandSearch == ":c" {
-                print("DEBUG: Filtering for clip command")
                 let historyItems = ClipboardManager.shared.getHistory()
-                print("DEBUG: Clipboard history has \(historyItems.count) items")
-                for (index, item) in historyItems.enumerated() {
-                    print("DEBUG:   [\(index)]: \(item.shortContent)")
-                }
 
                 let results = historyItems.enumerated().map { (index, item) in
                     Command(
@@ -390,22 +405,34 @@ class CommandManager {
                         icon: "doc.on.clipboard",
                         type: .clipboardItem(item: item)
                     ) {
-                        // Default action: paste item
-                        print("DEBUG: Pasting item \(index + 1): \(item.shortContent)")
                         ClipboardManager.shared.paste(item: item)
                     }
                 }
 
-                print("DEBUG: Returning \(results.count) clipboard items")
                 return results
             }
 
-            return commands.filter {
+            // Filter commands matching search
+            var filteredCommands = commands.filter {
                 $0.name.lowercased().contains(commandSearch)
             }
+
+            // Sort by usage (most used first)
+            filteredCommands.sort { cmd1, cmd2 in
+                let usage1 = UsageTracker.shared.getUsagePoints(for: cmd1.name)
+                let usage2 = UsageTracker.shared.getUsagePoints(for: cmd2.name)
+                return usage1 > usage2
+            }
+
+            return filteredCommands
         }
 
         return []
+    }
+
+    /// Track command usage when executed
+    func trackCommandUsage(_ commandName: String) {
+        UsageTracker.shared.incrementUsage(for: commandName)
     }
 
     private func formatDate(_ date: Date) -> String {

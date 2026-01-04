@@ -434,8 +434,11 @@ class SpotlightViewController: NSViewController {
             return
         }
 
+        // Track command usage
+        commandManager.trackCommandUsage(command.name)
+
         // Special handling for SHA-256 command
-        if command.name == ":sha-256" {
+        if command.name == ":sha-256" || command.name == ":sha256" {
             searchField.stringValue = ":sha-256"
             showSHA256Interface()
             return
@@ -452,6 +455,55 @@ class SpotlightViewController: NSViewController {
         if command.name == ":music" {
             searchField.stringValue = ":music"
             showMusicInterface()
+            return
+        }
+
+        // Special handling for timer command
+        if command.name == ":timer" {
+            searchField.stringValue = ":timer"
+            showTimerInterface()
+            return
+        }
+
+        // Special handling for define command
+        if command.name == ":define" {
+            searchField.stringValue = ":define"
+            showDefineInterface()
+            return
+        }
+
+        // Special handling for color command
+        if command.name == ":color" {
+            searchField.stringValue = ":color"
+            showColorInterface()
+            return
+        }
+
+        // Special handling for emoji command
+        if command.name == ":emoji" {
+            searchField.stringValue = ":emoji"
+            showEmojiInterface()
+            return
+        }
+
+        // Special handling for system info command
+        if command.name == ":sys" {
+            searchField.stringValue = ":sys"
+            showSystemInfoInterface()
+            return
+        }
+
+        // Special handling for convert command
+        if command.name == ":convert" {
+            searchField.stringValue = ":convert"
+            showConvertInterface()
+            return
+        }
+
+        // Special handling for tray command
+        if command.name == ":tray" {
+            searchField.stringValue = ":tray"
+            showFileTrayInterface()
             return
         }
 
@@ -567,60 +619,70 @@ extension SpotlightViewController: NSTextFieldDelegate {
 
         // Calculator command
         if searchLower == ":calc" || searchLower == ":calculator" {
+            commandManager.trackCommandUsage(":calc")
             showCalcInterface()
             return
         }
 
         // Music command
         if searchLower == ":music" || searchLower == ":now" {
+            commandManager.trackCommandUsage(":music")
             showMusicInterface()
             return
         }
 
         // SHA-256 command
         if searchLower == ":sha-256" || searchLower == ":sha256" || searchLower == ":hash" {
+            commandManager.trackCommandUsage(":sha-256")
             showSHA256Interface()
             return
         }
 
         // Timer command
         if searchLower == ":timer" || searchLower == ":stopwatch" {
+            commandManager.trackCommandUsage(":timer")
             showTimerInterface()
             return
         }
 
         // Define/Dictionary command
         if searchLower == ":define" || searchLower == ":dict" || searchLower == ":dictionary" {
+            commandManager.trackCommandUsage(":define")
             showDefineInterface()
             return
         }
 
         // Color command
         if searchLower == ":color" || searchLower == ":colour" || searchLower == ":hex" {
+            commandManager.trackCommandUsage(":color")
             showColorInterface()
             return
         }
 
         // Emoji command
         if searchLower == ":emoji" || searchLower == ":emojis" {
+            commandManager.trackCommandUsage(":emoji")
             showEmojiInterface()
             return
         }
 
         // System info command
         if searchLower == ":sys" || searchLower == ":system" || searchLower == ":info" {
+            commandManager.trackCommandUsage(":sys")
             showSystemInfoInterface()
             return
         }
 
         // Convert command
         if searchLower == ":convert" || searchLower == ":unit" || searchLower == ":units" {
+            commandManager.trackCommandUsage(":convert")
             showConvertInterface()
             return
         }
 
         // File tray command
         if searchLower == ":tray" || searchLower == ":files" {
+            commandManager.trackCommandUsage(":tray")
             showFileTrayInterface()
             return
         }
