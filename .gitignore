@@ -35,7 +35,11 @@ fastlane/test_output
 
 .git
 
-*.xcodeproj/
+# Ignore xcodeproj user data but track project file
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/
+!*.xcodeproj/project.pbxproj
+
 *.tar.gz
 
 
