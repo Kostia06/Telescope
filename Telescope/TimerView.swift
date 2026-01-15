@@ -1,5 +1,6 @@
 import Cocoa
 import AVFoundation
+import UserNotifications
 
 class TimerView: NSView {
     private var inputField: NSTextField!
@@ -191,11 +192,22 @@ class TimerView: NSView {
     }
 
     private func showNotification() {
-        let notification = NSUserNotification()
-        notification.title = "Timer Complete"
-        notification.informativeText = "Your timer has finished!"
-        notification.soundName = NSUserNotificationDefaultSoundName
-        NSUserNotificationCenter.default.deliver(notification)
+        let content = UNMutableNotificationContent()
+        content.title = "Timer Complete"
+        content.body = "Your timer has finished!"
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error showing notification: \(error)")
+            }
+        }
     }
 
     private func updateDisplay() {

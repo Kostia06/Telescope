@@ -1,4 +1,5 @@
 import Cocoa
+import QuartzCore
 
 class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -7,7 +8,7 @@ class KeyablePanel: NSPanel {
 
 class SpotlightWindowController: NSWindowController {
     private var spotlightViewController: SpotlightViewController!
-    private let panelWidth: CGFloat = 480
+    private let panelWidth: CGFloat = 420
     private let minHeight: CGFloat = 56
     private let maxHeight: CGFloat = 420
     private let searchBarHeight: CGFloat = 56
@@ -15,7 +16,7 @@ class SpotlightWindowController: NSWindowController {
 
     init(commandManager: CommandManager) {
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 56),
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 56),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -49,12 +50,12 @@ class SpotlightWindowController: NSWindowController {
         panel.contentView?.wantsLayer = true
         panel.contentView?.layer?.masksToBounds = false
 
-        // Enhanced shadow for notch appearance (only on sides and bottom)
+        // Apple-style soft shadow
         panel.contentView?.shadow = NSShadow()
         panel.contentView?.layer?.shadowColor = NSColor.black.cgColor
-        panel.contentView?.layer?.shadowOpacity = 0.6
-        panel.contentView?.layer?.shadowOffset = NSSize(width: 0, height: -12)
-        panel.contentView?.layer?.shadowRadius = 32
+        panel.contentView?.layer?.shadowOpacity = 0.35
+        panel.contentView?.layer?.shadowOffset = NSSize(width: 0, height: -8)
+        panel.contentView?.layer?.shadowRadius = 40
     }
 
     func togglePanel() {
@@ -65,63 +66,85 @@ class SpotlightWindowController: NSWindowController {
     func showPanel() {
         guard let window = window, let screen = NSScreen.main else { return }
 
-        let screenFrame = screen.visibleFrame
+        let screenFrame = screen.frame
 
-        // Final position (centered, 60pt below menu bar)
+        // Final position - centered horizontally and vertically (slightly above center)
         let finalFrame = NSRect(
             x: screenFrame.midX - panelWidth / 2,
-            y: screenFrame.maxY - minHeight - 60,
+            y: screenFrame.midY - minHeight / 2 + 100,
             width: panelWidth,
             height: minHeight
         )
 
-        // Start position (slightly above final position for subtle drop)
-        let startFrame = NSRect(
-            x: finalFrame.origin.x,
-            y: finalFrame.origin.y + 8,
-            width: panelWidth,
-            height: minHeight
-        )
+        window.setFrame(finalFrame, display: false, animate: false)
+        spotlightViewController.resetSearch()
 
-        window.setFrame(startFrame, display: false, animate: false)
-        spotlightViewController.focusSearchField()
-
+        // Set initial state - scaled down and transparent
         window.alphaValue = 0
+        if let layer = window.contentView?.layer {
+            layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            layer.position = CGPoint(x: finalFrame.width / 2, y: finalFrame.height / 2)
+            layer.transform = CATransform3DMakeScale(0.97, 0.97, 1)
+        }
+
         window.orderFrontRegardless()
         window.makeKey()
         NSApp.activate(ignoringOtherApps: true)
 
-        // Smooth spring animation with fade-in
+        // Smooth spring animation with scale
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.35
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.34, 1.56, 0.64, 1) // Spring-like bounce
+            context.duration = 0.28
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
             window.animator().alphaValue = 1
-            window.animator().setFrame(finalFrame, display: true)
-        }, completionHandler: { [weak self] in
-            self?.spotlightViewController.focusSearchField()
         })
+
+        // Scale animation using Core Animation for smoothness
+        if let layer = window.contentView?.layer {
+            let scaleAnim = CASpringAnimation(keyPath: "transform.scale")
+            scaleAnim.fromValue = 0.97
+            scaleAnim.toValue = 1.0
+            scaleAnim.damping = 18
+            scaleAnim.stiffness = 300
+            scaleAnim.mass = 0.8
+            scaleAnim.duration = scaleAnim.settlingDuration
+            scaleAnim.fillMode = .forwards
+            scaleAnim.isRemovedOnCompletion = false
+            layer.add(scaleAnim, forKey: "showScale")
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.spotlightViewController.focusSearchField()
+        }
     }
 
     func hidePanel() {
         guard let window = window else { return }
 
-        let currentFrame = window.frame
+        // Scale down animation for clean exit
+        if let layer = window.contentView?.layer {
+            let scaleAnim = CABasicAnimation(keyPath: "transform.scale")
+            scaleAnim.fromValue = 1.0
+            scaleAnim.toValue = 0.97
+            scaleAnim.duration = 0.15
+            scaleAnim.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0, 1, 1)
+            scaleAnim.fillMode = .forwards
+            scaleAnim.isRemovedOnCompletion = false
+            layer.add(scaleAnim, forKey: "hideScale")
+        }
 
-        // Subtle slide up while fading out
-        let hideFrame = NSRect(
-            x: currentFrame.origin.x,
-            y: currentFrame.origin.y + 6,
-            width: currentFrame.width,
-            height: currentFrame.height
-        )
-
+        // Fade out
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.18
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0, 0.6, 1) // Smooth ease-out
+            context.duration = 0.15
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0, 1, 1)
             window.animator().alphaValue = 0
-            window.animator().setFrame(hideFrame, display: true)
-        }, completionHandler: {
+        }, completionHandler: { [weak self] in
             window.orderOut(nil)
+            // Reset transform for next show
+            if let layer = window.contentView?.layer {
+                layer.removeAnimation(forKey: "hideScale")
+                layer.transform = CATransform3DIdentity
+            }
+            self?.spotlightViewController.resetSearch()
         })
     }
 
@@ -132,26 +155,27 @@ class SpotlightWindowController: NSWindowController {
         if resultCount == 0 {
             newHeight = minHeight
         } else {
-            let resultsHeight = CGFloat(min(resultCount, 8)) * rowHeight + 12
+            let resultsHeight = CGFloat(min(resultCount, 8)) * rowHeight + 8
             newHeight = min(searchBarHeight + resultsHeight, maxHeight)
         }
 
         if abs(window.frame.height - newHeight) < 1 { return }
 
-        let screenFrame = screen.visibleFrame
-        let currentFrame = window.frame
+        let screenFrame = screen.frame
 
-        // Keep window anchored at top of its current position (grows downward)
+        // Keep window centered horizontally, anchor at top (grows downward)
+        let baseY = screenFrame.midY + 100
         let newFrame = NSRect(
-            x: currentFrame.origin.x,
-            y: screenFrame.maxY - newHeight - 60,
+            x: screenFrame.midX - panelWidth / 2,
+            y: baseY - newHeight / 2,
             width: panelWidth,
             height: newHeight
         )
 
+        // Smooth spring animation for height changes
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.22
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.25, 1, 0.5, 1) // Smooth spring
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
             context.allowsImplicitAnimation = true
             window.animator().setFrame(newFrame, display: true, animate: true)
         })
@@ -164,20 +188,20 @@ class SpotlightWindowController: NSWindowController {
 
         if abs(window.frame.height - newHeight) < 1 { return }
 
-        let screenFrame = screen.visibleFrame
-        let currentFrame = window.frame
+        let screenFrame = screen.frame
 
-        // Keep window anchored at top of its current position (grows downward)
+        // Keep window centered horizontally, anchor at top (grows downward)
+        let baseY = screenFrame.midY + 100
         let newFrame = NSRect(
-            x: currentFrame.origin.x,
-            y: screenFrame.maxY - newHeight - 60,
+            x: screenFrame.midX - panelWidth / 2,
+            y: baseY - newHeight / 2,
             width: panelWidth,
             height: newHeight
         )
 
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.22
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.25, 1, 0.5, 1) // Smooth spring
+            context.duration = 0.25
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
             context.allowsImplicitAnimation = true
             window.animator().setFrame(newFrame, display: true, animate: true)
         })

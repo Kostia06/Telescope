@@ -117,7 +117,7 @@ class SpotlightViewController: NSViewController {
     private var dropIndicatorView: NSView?
 
     override func loadView() {
-        let draggableView = DraggableNotchView(frame: NSRect(x: 0, y: 0, width: 480, height: 56))
+        let draggableView = DraggableNotchView(frame: NSRect(x: 0, y: 0, width: 420, height: 56))
         draggableView.onFilesDropped = { [weak self] urls in
             self?.handleFilesDropped(urls)
         }
@@ -136,25 +136,26 @@ class SpotlightViewController: NSViewController {
         if dropIndicatorView == nil {
             dropIndicatorView = NSView(frame: view.bounds)
             dropIndicatorView?.wantsLayer = true
-            dropIndicatorView?.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.15).cgColor
-            dropIndicatorView?.layer?.borderColor = NSColor.controlAccentColor.withAlphaComponent(0.5).cgColor
-            dropIndicatorView?.layer?.borderWidth = 2
-            dropIndicatorView?.layer?.cornerRadius = 20
+            dropIndicatorView?.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.1).cgColor
+            dropIndicatorView?.layer?.borderColor = NSColor.controlAccentColor.withAlphaComponent(0.4).cgColor
+            dropIndicatorView?.layer?.borderWidth = 1.5
+            dropIndicatorView?.layer?.cornerRadius = 12
             dropIndicatorView?.alphaValue = 0
             dropIndicatorView?.autoresizingMask = [.width, .height]
             view.addSubview(dropIndicatorView!, positioned: .above, relativeTo: nil)
         }
 
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.25, 1, 0.5, 1)
+            context.duration = 0.18
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
             dropIndicatorView?.animator().alphaValue = 1
         }
     }
 
     private func hideDropIndicator() {
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
+            context.duration = 0.15
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0, 1, 1)
             dropIndicatorView?.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             self?.dropIndicatorView?.removeFromSuperview()
@@ -175,7 +176,7 @@ class SpotlightViewController: NSViewController {
 
     private func updateNotchMask() {
         let bounds = view.bounds
-        let radius: CGFloat = 20
+        let radius: CGFloat = 28  // Fully rounded pill shape
 
         // Round all corners
         let path = NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius)
@@ -193,19 +194,12 @@ class SpotlightViewController: NSViewController {
         view.wantsLayer = true
         view.layer?.masksToBounds = true
 
-        // Dark translucent background - Apple style
-        let darkBackground = NSView(frame: view.bounds)
-        darkBackground.wantsLayer = true
-        darkBackground.layer?.backgroundColor = NSColor(calibratedWhite: 0.1, alpha: 0.95).cgColor
-        darkBackground.autoresizingMask = [.width, .height]
-        view.addSubview(darkBackground)
-
         // Round all corners
         updateNotchMask()
 
-        // Visual effect container with blur - Apple style
+        // Apple-style visual effect with enhanced transparency
         visualEffectView = NSVisualEffectView(frame: view.bounds)
-        visualEffectView.material = .hudWindow
+        visualEffectView.material = .popover
         visualEffectView.state = .active
         visualEffectView.blendingMode = .behindWindow
         visualEffectView.wantsLayer = true
@@ -213,33 +207,42 @@ class SpotlightViewController: NSViewController {
         visualEffectView.autoresizingMask = [.width, .height]
         view.addSubview(visualEffectView)
 
+        // Subtle inner border for depth - Apple style
+        let borderView = NSView(frame: view.bounds)
+        borderView.wantsLayer = true
+        borderView.layer?.borderColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        borderView.layer?.borderWidth = 0.5
+        borderView.layer?.cornerRadius = 28
+        borderView.autoresizingMask = [.width, .height]
+        view.addSubview(borderView)
+
         // Search container
         let searchContainer = NSView(frame: NSRect(x: 0, y: view.bounds.height - 56, width: view.bounds.width, height: 56))
         searchContainer.autoresizingMask = [.width, .minYMargin]
         visualEffectView.addSubview(searchContainer)
 
-        // Search icon - Apple style tertiary label color
-        searchIconView = NSImageView(frame: NSRect(x: 18, y: 16, width: 24, height: 24))
+        // Search icon
+        searchIconView = NSImageView(frame: NSRect(x: 16, y: 18, width: 20, height: 20))
         searchIconView.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
-        searchIconView.contentTintColor = NSColor.tertiaryLabelColor
-        searchIconView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+        searchIconView.contentTintColor = NSColor.white.withAlphaComponent(0.5)
+        searchIconView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
         searchContainer.addSubview(searchIconView)
 
-        // Search field - Apple style
-        searchField = NSTextField(frame: NSRect(x: 50, y: 14, width: view.bounds.width - 68, height: 28))
+        // Search field
+        searchField = NSTextField(frame: NSRect(x: 42, y: 14, width: view.bounds.width - 56, height: 28))
         searchField.placeholderString = "Search"
-        searchField.font = NSFont.systemFont(ofSize: 20, weight: .regular)
+        searchField.font = NSFont.systemFont(ofSize: 18, weight: .light)
         searchField.focusRingType = .none
         searchField.isBordered = false
         searchField.backgroundColor = .clear
         searchField.delegate = self
-        searchField.textColor = NSColor.labelColor
+        searchField.textColor = NSColor.white
         searchField.isEditable = true
         searchField.isSelectable = true
 
         let placeholderAttrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: NSColor.placeholderTextColor,
-            .font: NSFont.systemFont(ofSize: 20, weight: .regular)
+            .foregroundColor: NSColor.white.withAlphaComponent(0.4),
+            .font: NSFont.systemFont(ofSize: 18, weight: .light)
         ]
         searchField.placeholderAttributedString = NSAttributedString(string: "Search", attributes: placeholderAttrs)
         searchContainer.addSubview(searchField)
@@ -420,6 +423,37 @@ class SpotlightViewController: NSViewController {
             self.view.window?.makeFirstResponder(self.searchField)
             self.searchField.becomeFirstResponder()
         }
+    }
+
+    func resetSearch() {
+        searchField.stringValue = ""
+        filteredCommands = []
+        resultsTableView.reloadData()
+        resultsTableView.deselectAll(nil)
+
+        // Hide all special interfaces
+        sha256View.isHidden = true
+        calcView.isHidden = true
+        musicView.isHidden = true
+        musicView.stopUpdating()
+        timerView.isHidden = true
+        defineView.isHidden = true
+        colorView.isHidden = true
+        emojiView.isHidden = true
+        systemInfoView.isHidden = true
+        systemInfoView.stopUpdating()
+        convertView.isHidden = true
+
+        // Keep file tray if it has files
+        if !fileTrayView.hasFiles {
+            fileTrayView.isHidden = true
+            isFileTrayVisible = false
+        }
+
+        scrollView.isHidden = isFileTrayVisible
+
+        // Reset search icon color
+        searchIconView.contentTintColor = NSColor.white.withAlphaComponent(0.5)
     }
 
     @objc func executeSelectedCommand() {
@@ -611,8 +645,8 @@ extension SpotlightViewController: NSTextFieldDelegate {
 
         searchDebounceTimer?.invalidate()
 
-        // Update search icon color based on input - Apple style
-        searchIconView.contentTintColor = searchText.isEmpty ? NSColor.tertiaryLabelColor : NSColor.secondaryLabelColor
+        // Update search icon color based on input
+        searchIconView.contentTintColor = searchText.isEmpty ? NSColor.white.withAlphaComponent(0.5) : NSColor.white
 
         // Check for special commands - show inline interfaces
         let searchLower = searchText.lowercased()
